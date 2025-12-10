@@ -1,0 +1,2188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HHC City Tycoon</title>
+    
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Load React and Babel for JSX processing -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <style>
+        /* Define global styles for font and full screen */
+        body {
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            overflow: hidden;
+        }
+        #root {
+            width: 100vw;
+            height: 100vh;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+const { useState, useEffect, useRef, useMemo } = React;
+
+// Define a simple placeholder wrapper for the many Lucide icons used
+function IconPlaceholder({ name, size = 24, className = 'text-white' }) {
+    return (
+        <div style={{ width: size, height: size }} className={`flex items-center justify-center ${className}`}>
+            <span style={{ fontSize: size / 3 }}>{name[0]}</span>
+        </div>
+    );
+}
+
+// Define custom SVG components for icons needed in the UI for consistency
+function Building2(props) { return <svg xmlns="http://www.w3.org/2000/svg" width={props.size} height={props.size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={props.className}><path d="M12 2v20"></path><path d="M18 10h-8"></path><path d="M18 6h-8"></path><path d="M14 22V12c0-1.1-0.9-2-2-2H4c-1.1 0-2 0.9-2 2v10"></path></svg>; }
+function Factory(props) { return <svg xmlns="http://www.w3.org/2000/svg" width={props.size} height={props.size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={props.className}><path d="M2 20h20v-2H2V20ZM13 2H9v16h4V2ZM2 10V2h4v8H2ZM18 2h4v16h-4V2Z"></path><path d="M8 10h1v8H8V10Z"></path><path d="M15 10h1v8h-1V10Z"></path></svg>; }
+function Landmark(props) { return <svg xmlns="http://www.w3.org/2000/svg" width={props.size} height={props.size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={props.className}><path d="M3 22h18"></path><path d="M12 2L6 22H18L12 2ZM6 18H18"></path></svg>; }
+function ArrowUpCircle(props) { return <svg xmlns="http://www.w3.org/2000/svg" width={props.size} height={props.size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={props.className}><circle cx="12" cy="12" r="10"></circle><path d="M12 8l4 4-4 4-4-4"></path><path d="M12 8v8"></path></svg>; }
+function Server(props) { return <svg xmlns="http://www.w3.org/2000/svg" width={props.size} height={props.size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={props.className}><rect width="20" height="8" x="2" y="2" rx="2" ry="2"></rect><rect width="20" height="8" x="2" y="14" rx="2" ry="2"></rect><line x1="6" x2="6" y1="6" y2="6"></line><line x1="6" x2="6" y1="18" y2="18"></line></svg>; }
+function Briefcase(props) { return <svg xmlns="http://www.w3.org/2000/svg" width={props.size} height={props.size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={props.className}><rect width="20" height="14" x="2" y="7" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>; }
+function Zap(props) { return <svg xmlns="http://www.w3.org/2000/svg" width={props.size} height={props.size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={props.className}><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>; }
+function Gem(props) { return <svg xmlns="http://www.w3.org/2000/svg" width={props.size} height={props.size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={props.className}><path d="M6 3h12l3 9-9 9-9-9 3-9Z"></path><path d="M18 3l-6 9-6-9"></path><path d="M12 22L6 10H18L12 22Z"></path></svg>; }
+function Crown(props) { return <svg xmlns="http://www.w3.org/2000/svg" width={props.size} height={props.size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={props.className}><path d="M12 2.5L14.5 7.5L19 8.5L16 12L20 17H4L8 12L5 8.5L9.5 7.5L12 2.5Z"></path></svg>; }
+
+function Coins(props) { return <svg xmlns="http://www.w3.org/2000/svg" width={props.size} height={props.size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={props.className}><circle cx="8" cy="8" r="6"></circle><path d="M18 15h2a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2H4"></path><path d="M2 11c0 5 4 9 9 9h6"></path><path d="M7 9v1"></path><path d="M15 11v-1"></path></svg>; }
+function User(props) { return <svg xmlns="http://www.w3.org/2000/svg" width={props.size} height={props.size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={props.className}><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>; }
+function Rocket(props) { return <svg xmlns="http://www.w3.org/2000/svg" width={props.size} height={props.size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={props.className}><path d="M4.5 10.5C5.877 10.5 7 9.377 7 8s-1.123-2.5-2.5-2.5-2.5 1.123-2.5 2.5S3.123 10.5 4.5 10.5Z"></path><path d="M9 14l3-3-3-3-3 3 3 3Z"></path><path d="M12 18l-3-3-3 3 3 3 3-3Z"></path><path d="M15 9l3 3 3-3-3-3-3 3Z"></path></svg>; }
+function ClipboardList(props) { return <svg xmlns="http://www.w3.org/2000/svg" width={props.size} height={props.size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={props.className}><rect width="8" height="4" x="8" y="2" rx="1" ry="1"></rect><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><path d="M9 12h6"></path><path d="M9 16h6"></path></svg>; }
+function Calendar(props) { return <svg xmlns="http://www.w3.org/2000/svg" width={props.size} height={props.size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={props.className}><rect width="18" height="18" x="3" y="4" rx="2" ry="2"></rect><line x1="16" x2="16" y1="2" y2="6"></line><line x1="8" x2="8" y1="2" y2="6"></line><line x1="3" x2="21" y1="10" y2="10"></line></svg>; }
+function MessageCircle(props) { return <svg xmlns="http://www.w3.org/2000/svg" width={props.size} height={props.size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={props.className}><path d="M21 11.5a8.38 8.38 0 0 1-.98-3.32A9 9 0 0 0 12 3C6.48 3 2 7.03 2 12c0 2.76 1.48 5.25 3.75 6.64L3 21l3.5-2.5A9.09 9.09 0 0 0 12 21c4.95 0 9-4.5 9-9.5V11.5Z"></path></svg>; }
+function ChevronLeft(props) { return <svg xmlns="http://www.w3.org/2000/svg" width={props.size} height={props.size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={props.className}><path d="m15 18-6-6 6-6"></path></svg>; }
+function CheckCircle(props) { return <svg xmlns="http://www.w3.org/2000/svg" width={props.size} height={props.size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={props.className}><path d="M22 11.08V12a10 10 0 1 1-5.63-8.43"></path><path d="M22 4L12 14.01l-3-3"></path></svg>; }
+function Check(props) { return <svg xmlns="http://www.w3.org/2000/svg" width={props.size} height={props.size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={props.className}><path d="M20 6 9 17l-5-5"></path></svg>; }
+function ExternalLink(props) { return <svg xmlns="http://www.w3.org/2000/svg" width={props.size} height={props.size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={props.className}><path d="M15 3h6v6"></path><path d="M10 14 21 3"></path><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path></svg>; }
+function RefreshCw(props) { return <svg xmlns="http://www.w3.org/2000/svg" width={props.size} height={props.size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={props.className}><path d="M21 12a9 9 0 0 0-9-9c-5.14 0-7.22 3.52-8.5 7h4"></path><path d="M7.7 20s-2-2-2-5"></path><path d="M7 20h2a2 2 0 0 0 2-2v-1.5"></path><path d="M14 4h-2a2 2 0 0 0-2 2v1.5"></path><path d="M21 12h-4l-3-3h6Z"></path></svg>; }
+function Clock(props) { return <svg xmlns="http://www.w3.org/2000/svg" width={props.size} height={props.size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={props.className}><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>; }
+function ChevronUp(props) { return <svg xmlns="http://www.w3.org/2000/svg" width={props.size} height={props.size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={props.className}><polyline points="18 15 12 9 6 15"></polyline></svg>; }
+function HardHat(props) { return <svg xmlns="http://www.w3.org/2000/svg" width={props.size} height={props.size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={props.className}><path d="M2 18h20v-2H2v2Z"></path><path d="M10 10V5a3 3 0 0 1 6 0v5"></path><path d="M12 2v3"></path></svg>; }
+function Hand(props) { return <svg xmlns="http://www.w3.org/2000/svg" width={props.size} height={props.size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={props.className}><path d="M2 10a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-8Z"></path><path d="M17 10V5a3 3 0 0 0-3-3H8a3 3 0 0 0-3 3v5"></path><path d="M14 22v-4"></path><path d="M10 22v-4"></path></svg>; }
+function Battery(props) { return <svg xmlns="http://www.w3.org/2000/svg" width={props.size} height={props.size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={props.className}><rect width="18" height="12" x="2" y="6" rx="2" ry="2"></rect><line x1="22" x2="22" y1="11" y2="13"></line></svg>; }
+function X(props) { return <svg xmlns="http://www.w3.org/2000/svg" width={props.size} height={props.size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={props.className}><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg>; }
+function Loader(props) { return <svg xmlns="http://www.w3.org/2000/svg" width={props.size} height={props.size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={props.className}><path d="M12 2v4"></path><path d="M18.3 5.7l-2.8 2.8"></path><path d="M22 12h-4"></path><path d="M18.3 18.3l-2.8-2.8"></path><path d="M12 22v-4"></path><path d="M5.7 18.3l2.8-2.8"></path><path d="M2 12h4"></path><path d="M5.7 5.7l2.8 2.8"></path></svg>; }
+function Twitter(props) { return <svg xmlns="http://www.w3.org/2000/svg" width={props.size} height={props.size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={props.className}><path d="M22 4s-.7 2.1-2 3.4c1.6 10-9.4 17.3-18.7 11.2C3.1 16.3 2 13 2 13s2-2 3.5-2c-.7 1.3-1 2.8-1 4.3v.7c0 3 1.5 5.7 4 7 1.5.8 3.2 1.3 5 1.4-1.2 1.1-2.9 1.8-5 1.8-1.5 0-3-.3-4.4-.8C8.5 22 12 21 15 19c6.3-4 8-11.7 8-11.7.5-1.2.8-2.5.8-3.8V4Z"></path></svg>; }
+function Heart(props) { return <svg xmlns="http://www.w3.org/2000/svg" width={props.size} height={props.size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={props.className}><path d="M19 14c1.49-1.46 3-3.2 3-5.5a5.5 5.5 0 0 0-5.5-5.5c-1.55 0-3.1 1.07-4.5 2.25-1.4-1.18-2.95-2.25-4.5-2.25A5.5 5.5 0 0 0 2 8.5c0 2.3 1.51 4.04 3 5.5l7 7Z"></path></svg>; }
+function ZapPlaceholder(props) { return <svg xmlns="http://www.w3.org/2000/svg" width={props.size} height={props.size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={props.className}><path d="M13 2 3 14 12 14 11 22 21 10 12 10Z"></path></svg>; }
+function BotPlaceholder(props) { return <svg xmlns="http://www.w3.org/2000/svg" width={props.size} height={props.size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={props.className}><path d="M12 8V4"></path><rect x="4" y="8" width="16" height="12" rx="2"></rect><path d="M9 16h6"></path><path d="M8 12h8"></path><path d="M12 22v-2"></path></svg>; }
+function SparklesPlaceholder(props) { return <svg xmlns="http://www.w3.org/2000/svg" width={props.size} height={props.size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={props.className}><path d="M22 17H2v-2h20v2Z"></path><path d="m14 2 2 4-4 2-2-4-4-2 4-2 2 4Z"></path><path d="M8 14l-2 4 4 2 2-4 4-2-4-2-2 4Z"></path></svg>; }
+function DraftingCompass(props) { return <svg xmlns="http://www.w3.org/2000/svg" width={props.size} height={props.size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={props.className}><circle cx="12" cy="12" r="10"></circle><path d="M12 2v10"></path><path d="M12 16a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z"></path></svg>; }
+function MousePointer2(props) { return <svg xmlns="http://www.w3.org/2000/svg" width={props.size} height={props.size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={props.className}><path d="m4 4 7.07 15.28 1.48-5.34L19.28 11.07 4 4Z"></path></svg>; }
+function Moon(props) { return <svg xmlns="http://www.w3.org/2000/svg" width={props.size} height={props.size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={props.className}><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"></path></svg>; }
+function Sun(props) { return <svg xmlns="http://www.w3.org/2000/svg" width={props.size} height={props.size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={props.className}><circle cx="12" cy="12" r="5"></circle><line x1="12" x2="12" y1="1" y2="3"></line><line x1="12" x2="12" y1="21" y2="23"></line><line x1="4.22" x2="5.64" y1="4.22" y2="5.64"></line><line x1="18.36" x2="19.78" y1="18.36" y2="19.78"></line><line x1="1" x2="3" y1="12" y2="12"></line><line x1="21" x2="23" y1="12" y2="12"></line><line x1="4.22" x2="5.64" y1="19.78" y2="18.36"></line><line x1="18.36" x2="19.78" y1="5.64" y2="4.22"></line></svg>; }
+function Send(props) { return <svg xmlns="http://www.w3.org/2000/svg" width={props.size} height={props.size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={props.className}><line x1="22" x2="11" y1="2" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>; }
+function AlertTriangle(props) { return <svg xmlns="http://www.w3.org/2000/svg" width={props.size} height={props.size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={props.className}><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"></path><line x1="12" x2="12" y1="9" y2="13"></line><line x1="12" x2="12.01" y1="17" y2="17"></line></svg>; }
+
+// --- Configuration Constants ---
+const LOADING_BG_IMAGE = "https://i.imgur.com/Cs4RCKM.jpeg"; 
+const CITY_HALL_IMAGE = "https://i.imgur.com/1YbAFXS.png"; 
+const GAME_BG_GRADIENT = "linear-gradient(to bottom, #020617, #0f172a)"; 
+const BALANCE_ICON_URL = "https://i.imgur.com/IceJfpm.jpeg";
+
+// --- SOCIAL LINKS (EDIT HERE) ---
+const X_OFFICIAL_LINK = "https://x.com/HahhCat"; 
+
+// --- CUSTOM ASSETS ---
+const CUSTOM_TERRAIN_URL = "https://i.imgur.com/Bd9zUOc.png"; 
+
+// Map Settings
+const MAP_SIZE = 20;
+const TILE_WIDTH = 128; 
+const TILE_HEIGHT = 64; 
+
+// --- DAILY REWARDS CONFIGURATION (30 DAYS, SUM = 5,000,000) ---
+const DAILY_REWARDS = [
+    2500,        // Day 1
+    5000,        // Day 2
+    7500,        // Day 3
+    10000,       // Day 4
+    15000,       // Day 5
+    20000,       // Day 6
+    100000,      // Day 7 (Milestone)
+    
+    25000,       // Day 8
+    30000,       // Day 9
+    35000,       // Day 10
+    45000,       // Day 11
+    50000,       // Day 12
+    55000,       // Day 13
+    150000,      // Day 14 (Milestone)
+    
+    70000,       // Day 15
+    80000,       // Day 16
+    85000,       // Day 17
+    95000,       // Day 18
+    100000,      // Day 19
+    110000,      // Day 20
+    250000,      // Day 21 (Milestone)
+    
+    125000,      // Day 22
+    135000,      // Day 23
+    145000,      // Day 24
+    155000,      // Day 25
+    165000,      // Day 26
+    185000,      // Day 27
+    250000,      // Day 28
+    500000,      // Day 29
+    2000000      // Day 30 (Jackpot)
+];
+
+// --- CHARACTER SKINS CONFIGURATION ---
+const CHARACTER_SKINS = [
+    { id: 1, name: "Cat CEO", effect: "Base Mining Rate", unlockPPH: 0, imageUrl: CITY_HALL_IMAGE },
+    { id: 2, name: "Blue Creature", effect: "Visual Only", unlockPPH: 1000, imageUrl: "https://i.imgur.com/CEpJyvm.jpeg" },
+    { id: 3, name: "Executive Cat", effect: "Visual Only", unlockPPH: 5000, imageUrl: "https://i.imgur.com/rNoqkzH.jpeg" },
+    // Locked Slots - No Image URL
+    { id: 4, name: "Hidden", effect: "???", unlockPPH: 250000, imageUrl: null },
+    { id: 5, name: "Hidden", effect: "???", unlockPPH: 500000, imageUrl: null },
+    { id: 6, name: "Hidden", effect: "???", unlockPPH: 1000000, imageUrl: null },
+];
+
+
+// --- BUILDING CONFIGURATION (MAP) ---
+const BUILDING_TYPES = {
+  residential: { color: '#60a5fa', glow: '#60a5fa', label: 'Apt', imageUrl: null },   
+  industrial: { color: '#f87171', glow: '#f87171', label: 'Fac', imageUrl: null },     
+  finance: { color: '#facc15', glow: '#facc15', label: 'Bank', imageUrl: null },       
+  grass: { color: '#573d2a', glow: '#1e293b' }                         
+};
+
+const getIconForType = (type) => {
+  switch (type) {
+    case 'residential': return <Building2 size={20} className="text-blue-400" />;
+    case 'industrial': return <Factory size={20} className="text-red-400" />;
+    case 'finance': return <Landmark size={20} className="text-yellow-400" />;
+    default: return <Building2 size={20} className="text-gray-400" />;
+  }
+};
+
+const INITIAL_BUILDINGS = [
+  { id: 1, name: "Crypto Apartment", cost: 100, income: 50, level: 1, icon: getIconForType('residential'), type: "residential", isCustom: false, imageUrl: "https://i.imgur.com/HEv9QsL.jpeg", removeBg: true },
+  { id: 2, name: "NFT Factory", cost: 500, income: 300, level: 1, icon: getIconForType('industrial'), type: "industrial", isCustom: false, imageUrl: "https://i.imgur.com/YYxkzEL.jpeg", removeBg: true },
+  { id: 3, name: "DeFi Bank", cost: 2000, income: 1000, level: 1, icon: getIconForType('finance'), type: "finance", isCustom: false, imageUrl: "https://i.imgur.com/n54ksZv.jpeg", removeBg: true },
+  { id: 4, name: "HHC Exchange", cost: 5000, income: 2400, level: 1, icon: <ArrowUpCircle size={20} className="text-green-400"/>, type: "finance", isCustom: false, imageUrl: "https://i.imgur.com/UXPf9gw.jpeg", removeBg: true },
+  { id: 5, name: "Bitcoin Mining Farm", cost: 15000, income: 4500, level: 1, icon: <Server size={20} className="text-purple-400"/>, type: "industrial", isCustom: false, imageUrl: "https://i.imgur.com/hQM9xAG.jpeg", removeBg: true },
+  { id: 6, name: "HODL Hotel", cost: 35000, income: 9000, level: 1, icon: getIconForType('residential'), type: "residential", isCustom: false, imageUrl: "https://i.imgur.com/s0yCoFT.jpeg", removeBg: true },
+  { id: 7, name: "Token Plaza", cost: 75000, income: 18000, level: 1, icon: <Briefcase size={20} className="text-yellow-500"/>, type: "finance", isCustom: false, imageUrl: "https://i.imgur.com/IrvxxCN.jpeg", removeBg: true },
+  { id: 8, name: "Web3 Data Center", cost: 150000, income: 35000, level: 1, icon: <Zap size={20} className="text-blue-500"/>, type: "industrial", isCustom: false, imageUrl: "https://i.imgur.com/4yG3IF7.jpeg", removeBg: true },
+  { id: 9, name: "Whale Mansion", cost: 500000, income: 120000, level: 1, icon: <Gem size={20} className="text-pink-400"/>, type: "residential", isCustom: false, imageUrl: "https://i.imgur.com/Hktz1pT.jpeg", removeBg: true },
+  { id: 10, name: "Central Bank DAO", cost: 2000000, income: 450000, level: 1, icon: <Crown size={20} className="text-yellow-400"/>, type: "finance", isCustom: false, imageUrl: "https://i.imgur.com/rGYLUo0.jpeg", removeBg: true }
+];
+
+// --- PASSIVE BUSINESS MODULES (Non-Map) ---
+const INITIAL_BUSINESSES = [
+    // Early Game
+    { id: 'b1', name: "Barber Shop", baseCost: 500, baseIncome: 100, level: 0, icon: <IconPlaceholder name="Scissors" size={20} className="text-orange-400"/>, description: "Fresh cuts for crypto whales." },
+    { id: 'b2', name: "Gaming Club", baseCost: 1200, baseIncome: 250, level: 0, icon: <IconPlaceholder name="Gamepad2" size={20} className="text-purple-400"/>, description: "eSports tournaments daily." },
+    { id: 'b3', name: "Crypto Cafe", baseCost: 2500, baseIncome: 450, level: 0, icon: <IconPlaceholder name="Coffee" size={20} className="text-amber-700"/>, description: "Latte paid in Satoshis." },
+    { id: 'b4', name: "Metaverse Gym", baseCost: 6000, baseIncome: 900, level: 0, icon: <IconPlaceholder name="Dumbbell" size={20} className="text-red-500"/>, description: "Pump your bags and muscles." },
+    { id: 'b5', name: "Block Cinema", baseCost: 15000, baseIncome: 2000, level: 0, icon: <IconPlaceholder name="Film" size={20} className="text-indigo-400"/>, description: "Movies on the blockchain." },
+    { id: 'b6', name: "Pizza Node", baseCost: 35000, baseIncome: 4200, level: 0, icon: <IconPlaceholder name="Pizza" size={20} className="text-yellow-500"/>, description: "10,000 BTC per pizza." },
+    { id: 'b7', name: "Rave Club", baseCost: 80000, baseIncome: 8500, level: 0, icon: <IconPlaceholder name="Music" size={20} className="text-pink-500"/>, description: "Parties that never stop." },
+    { id: 'b8', name: "Lambo Wash", baseCost: 200000, baseIncome: 18000, level: 0, icon: <IconPlaceholder name="Car" size={20} className="text-blue-400"/>, description: "Keep the supercars clean." },
+    
+    // Mid-Late Game (New)
+    { id: 'b9', name: "Cyber Security", baseCost: 500000, baseIncome: 45000, level: 0, icon: <IconPlaceholder name="Shield" size={20} className="text-cyan-400"/>, description: "Protect keys from hackers." },
+    { id: 'b10', name: "Drone Delivery", baseCost: 1200000, baseIncome: 110000, level: 0, icon: <IconPlaceholder name="Plane" size={20} className="text-sky-500"/>, description: "Instant airdrops, literally." },
+    { id: 'b11', name: "Robot Fight Club", baseCost: 3000000, baseIncome: 250000, level: 0, icon: <IconPlaceholder name="Bot" size={20} className="text-gray-400"/>, description: "Bet crypto on steel." },
+    { id: 'b12', name: "Space Tourism", baseCost: 7500000, baseIncome: 600000, level: 0, icon: <IconPlaceholder name="Rocket" size={20} className="text-red-500"/>, description: "To the moon and back." },
+    { id: 'b13', name: "Quantum Lab", baseCost: 18000000, baseIncome: 1400000, level: 0, icon: <IconPlaceholder name="Cpu" size={20} className="text-violet-400"/>, description: "Mining with physics." },
+    { id: 'b14', name: "Mars Colony", baseCost: 45000000, baseIncome: 3200000, level: 0, icon: <IconPlaceholder name="Globe" size={20} className="text-orange-500"/>, description: "Red planet real estate." },
+    { id: 'b15', name: "Time Agency", baseCost: 100000000, baseIncome: 7500000, level: 0, icon: <IconPlaceholder name="Clock" size={20} className="text-teal-400"/>, description: "Invest in yesterday." },
+    { id: 'b16', name: "Galactic Trade", baseCost: 250000000, baseIncome: 18000000, level: 0, icon: <IconPlaceholder name="Repeat" size={20} className="text-pink-500"/>, description: "Interstellar arbitrage." },
+    { id: 'b17', name: "Dyson Sphere", baseCost: 600000000, baseIncome: 42000000, level: 0, icon: <IconPlaceholder name="Sun" size={20} className="text-yellow-300"/>, description: "Harness a star." },
+    { id: 'b18', name: "Multiverse Gate", baseCost: 1500000000, baseIncome: 99000000, level: 0, icon: <IconPlaceholder name="Sparkles" size={20} className="text-indigo-400"/>, description: "Infinite profits." },
+];
+
+// --- HELPER FUNCTIONS ---
+const base64ToArrayBuffer = (base64) => {
+    const binaryString = atob(base64);
+    const len = binaryString.length;
+    const bytes = new Uint8Array(len);
+    for (let i = 0; i < len; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+    }
+    return bytes.buffer;
+};
+
+const writeString = (view, offset, string) => {
+    for (let i = 0; i < string.length; i++) {
+        view.setUint8(offset + i, string.charCodeAt(i));
+    }
+};
+
+const pcmToWav = (pcm16, sampleRate = 24000) => {
+    const numChannels = 1;
+    const bitDepth = 16;
+    const bytesPerSample = bitDepth / 8;
+    const blockAlign = numChannels * bytesPerSample;
+    const byteRate = sampleRate * blockAlign;
+
+    const buffer = new ArrayBuffer(44 + pcm16.length * 2);
+    const view = new DataView(buffer);
+
+    writeString(view, 0, 'RIFF');
+    view.setUint32(4, 36 + pcm16.length * 2, true);
+    writeString(view, 8, 'WAVE');
+    writeString(view, 12, 'fmt ');
+    view.setUint32(16, 16, true);
+    view.setUint16(20, 1, true);
+    view.setUint16(22, numChannels, true);
+    view.setUint32(24, sampleRate, true);
+    view.setUint32(28, byteRate, true);
+    view.setUint16(32, blockAlign, true);
+    view.setUint16(34, bitDepth, true);
+    writeString(view, 36, 'data');
+    view.setUint32(40, pcm16.length * 2, true);
+
+    let offset = 44;
+    for (let i = 0; i < pcm16.length; i++, offset += 2) {
+        view.setInt16(offset, pcm16[i], true);
+    }
+
+    return new Blob([buffer], { type: 'audio/wav' });
+};
+
+// Helper: Remove white-ish background from images
+const processSkinImage = (url) => {
+    return new Promise((resolve) => {
+        if (!url) { resolve(null); return; } // SAFETY CHECK: Return null immediately if no url
+        const img = new Image();
+        img.crossOrigin = "Anonymous";
+        img.src = url;
+        img.onload = () => {
+            const canvas = document.createElement('canvas');
+            canvas.width = img.width;
+            canvas.height = img.height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0);
+            try {
+                const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const data = imgData.data;
+                for (let i = 0; i < data.length; i += 4) {
+                    // Check if pixel is white or very light gray
+                    if (data[i] > 230 && data[i + 1] > 230 && data[i + 2] > 230) {
+                        data[i + 3] = 0; // Set alpha to 0 (transparent)
+                    }
+                }
+                ctx.putImageData(imgData, 0, 0);
+                resolve(canvas.toDataURL());
+            } catch (e) {
+                // If CORS fails, fallback to original URL
+                resolve(url);
+            }
+        };
+        img.onerror = () => resolve(url);
+    });
+};
+
+// --- ISO MAP COMPONENT ---
+const CityMap = ({ placedBuildings, setPlacedBuildings, onMapTap, placementMode, cameraPos, setCameraPos, setActiveTab, selectedBuilding }) => {
+  const canvasRef = useRef(null);
+  const [zoom, setZoom] = useState(0.6); 
+  const [loadedImages, setLoadedImages] = useState({});
+  const requestRef = useRef();
+  
+  // Dragging State
+  const [draggedBuilding, setDraggedBuilding] = useState(null); 
+  const [ghostPos, setGhostPos] = useState(null);
+  const longPressTimer = useRef(null);
+  
+  // Day/Night & Cloud State
+  const [currentTime, setCurrentTime] = useState(new Date());
+  const cloudsRef = useRef([]);
+
+  useEffect(() => {
+    cloudsRef.current = Array(25).fill().map(() => ({
+      x: (Math.random() - 0.5) * MAP_SIZE * TILE_WIDTH * 4,
+      y: (Math.random() - 0.5) * MAP_SIZE * TILE_HEIGHT * 4,
+      scale: 1 + Math.random() * 3, 
+      speed: 0.1 + Math.random() * 0.3,
+      opacity: 0.15 + Math.random() * 0.25,
+      puffs: Array(3 + Math.floor(Math.random() * 3)).fill().map(() => ({
+          ox: (Math.random() - 0.5) * 80,
+          oy: (Math.random() - 0.5) * 40,
+          r: 30 + Math.random() * 40
+      }))
+    }));
+
+    const timeInterval = setInterval(() => setCurrentTime(new Date()), 10000); 
+    return () => clearInterval(timeInterval);
+  }, []);
+
+  const touchStateRef = useRef({ lastDistance: 0, lastCenter: { x: 0, y: 0 }, isMultiTouch: false });
+
+  const getDistance = (touches) => Math.hypot(touches[0].clientX - touches[1].clientX, touches[0].clientY - touches[1].clientY);
+  const getCenter = (touches) => ({ x: (touches[0].clientX + touches[1].clientX) / 2, y: (touches[0].clientY + touches[1].clientY) / 2 });
+  
+  // Pre-load images 
+  useEffect(() => {
+    const loadList = [];
+    Object.keys(BUILDING_TYPES).forEach(key => {
+      if (BUILDING_TYPES[key].imageUrl) loadList.push({ key, url: BUILDING_TYPES[key].imageUrl });
+    });
+    placedBuildings.forEach(b => {
+      if (b.imageUrl) {
+        const shouldRemoveBg = b.removeBg || b.imageUrl === "https://i.imgur.com/HEv9QsL.jpeg";
+        loadList.push({ key: b.uniqueId, url: b.imageUrl, removeBg: shouldRemoveBg });
+      }
+    });
+    if (CUSTOM_TERRAIN_URL) loadList.push({ key: 'terrain', url: CUSTOM_TERRAIN_URL });
+
+    loadList.forEach(item => {
+      if (!loadedImages[item.key]) {
+        const img = new Image();
+        if (item.removeBg) img.crossOrigin = "Anonymous"; 
+        img.src = item.url;
+        img.onload = () => {
+          if (item.removeBg) {
+             const tempCanvas = document.createElement('canvas');
+             tempCanvas.width = img.width;
+             tempCanvas.height = img.height;
+             const tempCtx = tempCanvas.getContext('2d');
+             tempCtx.drawImage(img, 0, 0);
+             try {
+                 const imgData = tempCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
+                 const data = imgData.data;
+                 for (let i = 0; i < data.length; i += 4) {
+                    if (data[i] > 230 && data[i + 1] > 230 && data[i + 2] > 230) {
+                        data[i + 3] = 0; 
+                    }
+                 }
+                 tempCtx.putImageData(imgData, 0, 0);
+                 const newImg = new Image();
+                 newImg.src = tempCanvas.toDataURL();
+                 newImg.onload = () => setLoadedImages(prev => ({ ...prev, [item.key]: newImg }));
+             } catch (e) { setLoadedImages(prev => ({ ...prev, [item.key]: img })); }
+          } else { setLoadedImages(prev => ({ ...prev, [item.key]: img })); }
+        };
+        img.onerror = () => {
+             if (item.removeBg) {
+                 const fallbackImg = new Image();
+                 fallbackImg.src = item.url;
+                 fallbackImg.onload = () => setLoadedImages(prev => ({ ...prev, [item.key]: fallbackImg }));
+             }
+        };
+      }
+    });
+  }, [placedBuildings]);
+  
+  const mapGrid = useMemo(() => {
+    let grid = Array(MAP_SIZE).fill().map(() => Array(MAP_SIZE).fill('grass'));
+    placedBuildings.forEach(b => {
+      if (draggedBuilding && b.uniqueId === draggedBuilding.uniqueId) return; 
+      if (b.x >= 0 && b.x < MAP_SIZE && b.y >= 0 && b.y < MAP_SIZE) {
+        grid[b.x][b.y] = 'building';
+      }
+    });
+    return grid; 
+  }, [placedBuildings, draggedBuilding]);
+
+  const dragRef = useRef({ isDragging: false, startX: 0, startY: 0, initialCamX: 0, initialCamY: 0 });
+
+  const animate = () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!mapGrid || mapGrid.length !== MAP_SIZE) return;
+
+    const now = new Date();
+    const realHour = now.getHours() + (now.getMinutes() / 60);
+    const isNightMode = realHour >= 20 || realHour < 5; 
+
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    ctx.fillStyle = '#020617';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    ctx.save(); 
+    ctx.translate(cameraPos.x, cameraPos.y);
+    ctx.scale(zoom, zoom);
+    
+    const TW = TILE_WIDTH; const TH = TILE_HEIGHT;
+    const toIso = (x, y) => ({ x: (x - y) * (TW / 2), y: (x + y) * (TH / 2) });
+
+    const terrainImg = loadedImages['terrain'];
+    if (terrainImg) {
+        const isoCenter = toIso(MAP_SIZE / 2, MAP_SIZE / 2); 
+        const WORLD_WIDTH_ISO_SPREAD = MAP_SIZE * TW; 
+        const WORLD_HEIGHT_ISO_SPREAD = MAP_SIZE * TH; 
+        const IMAGE_DRAW_WIDTH = WORLD_WIDTH_ISO_SPREAD * 2; 
+        const IMAGE_DRAW_HEIGHT = WORLD_HEIGHT_ISO_SPREAD * 2; 
+        ctx.drawImage(terrainImg, isoCenter.x - IMAGE_DRAW_WIDTH / 2, isoCenter.y - IMAGE_DRAW_HEIGHT / 2, IMAGE_DRAW_WIDTH, IMAGE_DRAW_HEIGHT);
+    }
+
+    for (let x = 0; x < MAP_SIZE; x++) {
+      if (!mapGrid[x]) continue; 
+      for (let y = 0; y < MAP_SIZE; y++) {
+         const pos = toIso(x, y);
+         const type = mapGrid[x][y];
+         const typeInfo = BUILDING_TYPES[type] || {};
+
+         ctx.beginPath();
+         ctx.moveTo(pos.x, pos.y);
+         ctx.lineTo(pos.x + TW / 2, pos.y + TH / 2);
+         ctx.lineTo(pos.x, pos.y + TH);
+         ctx.lineTo(pos.x - TW / 2, pos.y + TH / 2);
+         ctx.closePath();
+
+         if (type === 'grass') {
+            if (!terrainImg) { ctx.fillStyle = typeInfo.color; ctx.fill(); } 
+            else { ctx.fillStyle = typeInfo.color + '00'; ctx.fill(); }
+            if (placementMode || draggedBuilding || (ghostPos && ghostPos.x === x && ghostPos.y === y)) { 
+              ctx.fillStyle = typeInfo.color + 'aa'; ctx.fill();
+            }
+            if (selectedBuilding && selectedBuilding.x === x && selectedBuilding.y === y) {
+                 ctx.fillStyle = 'rgba(234, 179, 8, 0.4)'; ctx.fill();
+                 ctx.strokeStyle = '#eab308'; ctx.lineWidth = 3; ctx.stroke();
+            }
+         } else if (type === 'city_hall') {
+             ctx.fillStyle = '#0f172a'; ctx.fill();
+         }
+         
+         if (placementMode || draggedBuilding) { ctx.strokeStyle = 'white'; ctx.lineWidth = 1 / zoom; ctx.stroke(); }
+      }
+    }
+    
+    const sortedBuildings = [...placedBuildings]
+        .filter(b => !draggedBuilding || b.uniqueId !== draggedBuilding.uniqueId)
+        .sort((a,b) => (a.x + a.y) - (b.x + a.y));
+
+    sortedBuildings.forEach(b => {
+       const pos = toIso(b.x, b.y);
+       const image = loadedImages?.[b.uniqueId] || loadedImages?.[b.type];
+       const isSelected = selectedBuilding && selectedBuilding.uniqueId === b.uniqueId;
+       const typeInfo = BUILDING_TYPES[b.type] || { glow: 'white' };
+
+       if (image) {
+         const scaleFactor = (TW * 1.1) / image.width; 
+         const drawW = image.width * scaleFactor;
+         const drawH = image.height * scaleFactor;
+         
+         if (isSelected) { 
+             ctx.shadowBlur = 20; ctx.shadowColor = '#eab308'; 
+         } else if (isNightMode) {
+             // Add breathing night shine
+             ctx.shadowBlur = 15 + Math.sin(Date.now() / 500) * 5; 
+             ctx.shadowColor = typeInfo.glow; 
+         }
+
+         ctx.drawImage(image, pos.x - drawW/2, pos.y + TH/2 - drawH + 12, drawW, drawH); 
+         ctx.shadowBlur = 0;
+       } else {
+         const bw = 64; const bh = 96; 
+         const typeInfo = BUILDING_TYPES[b.type] || {color:'white'};
+         if (isSelected) { ctx.shadowBlur = 20; ctx.shadowColor = '#eab308'; } else { ctx.shadowBlur=10 / zoom; ctx.shadowColor=typeInfo.glow; }
+         ctx.fillStyle = typeInfo.color + 'aa';
+         ctx.fillRect(pos.x - bw/2, pos.y + TH/2 - bh, bw, bh);
+         ctx.shadowBlur=0;
+       }
+    });
+
+    let activeItem = draggedBuilding || (placementMode && ghostPos ? {...placementMode, x: ghostPos.x, y: ghostPos.y} : null);
+    if (activeItem) {
+        const { x, y } = activeItem;
+        const pos = toIso(x, y);
+        const isOccupiedByBuilding = placedBuildings.some(b => b.uniqueId !== (activeItem.uniqueId || -1) && b.x === x && b.y === y);
+        const valid = !isOccupiedByBuilding && x >= 0 && x < MAP_SIZE && y >= 0 && y < MAP_SIZE;
+
+        ctx.beginPath();
+        ctx.moveTo(pos.x, pos.y);
+        ctx.lineTo(pos.x + TW / 2, pos.y + TH / 2);
+        ctx.lineTo(pos.x, pos.y + TH);
+        ctx.lineTo(pos.x - TW / 2, pos.y + TH / 2);
+        ctx.closePath();
+        ctx.fillStyle = valid ? 'rgba(34, 197, 94, 0.5)' : 'rgba(239, 68, 68, 0.5)';
+        ctx.fill();
+        ctx.strokeStyle = valid ? '#22c55e' : '#ef4444';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        const floatY = draggedBuilding ? -30 : 0;
+        const image = loadedImages?.[activeItem.uniqueId] || loadedImages?.[activeItem.type] || loadedImages?.[activeItem.id];
+        
+        if (image) {
+            const scaleFactor = (TW * 1.1) / image.width; 
+            const drawW = image.width * scaleFactor;
+            const drawH = image.height * scaleFactor;
+            ctx.globalAlpha = 0.7; 
+            ctx.drawImage(image, pos.x - drawW/2, pos.y + TH/2 - drawH + 12 + floatY, drawW, drawH); 
+            ctx.globalAlpha = 1.0;
+        } else {
+             const bw = 64; const bh = 96; 
+             const typeInfo = BUILDING_TYPES[activeItem.type] || {color:'white'};
+             ctx.shadowBlur=10 / zoom; ctx.shadowColor=typeInfo.glow;
+             ctx.fillStyle = typeInfo.color + 'cc';
+             ctx.fillRect(pos.x - bw/2, pos.y + TH/2 - bh + floatY, bw, bh);
+             ctx.shadowBlur=0;
+        }
+    }
+
+    if (cloudsRef.current) {
+        cloudsRef.current.forEach(cloud => {
+            cloud.x += cloud.speed;
+            const bounds = MAP_SIZE * TILE_WIDTH * 2;
+            if (cloud.x > bounds) cloud.x = -bounds;
+            ctx.save();
+            ctx.translate(cloud.x, cloud.y);
+            ctx.scale(cloud.scale, cloud.scale);
+            if (cloud.puffs) {
+                cloud.puffs.forEach(puff => {
+                    const grad = ctx.createRadialGradient(puff.ox, puff.oy, puff.r * 0.2, puff.ox, puff.oy, puff.r);
+                    grad.addColorStop(0, `rgba(255, 255, 255, ${cloud.opacity})`);
+                    grad.addColorStop(1, 'rgba(255, 255, 255, 0)');
+                    ctx.fillStyle = grad;
+                    ctx.beginPath();
+                    ctx.arc(puff.ox, puff.oy, puff.r, 0, Math.PI * 2);
+                    ctx.fill();
+                });
+            }
+            ctx.restore();
+        });
+    }
+
+    ctx.restore(); 
+
+    let overlayColor = 'rgba(0,0,0,0)';
+    if (isNightMode) overlayColor = 'rgba(2, 6, 23, 0.6)';
+    else if (realHour >= 5 && realHour < 7) overlayColor = 'rgba(253, 186, 116, 0.3)';
+    else if (realHour >= 17 && realHour < 20) overlayColor = 'rgba(76, 29, 149, 0.3)';
+    ctx.fillStyle = overlayColor;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    requestRef.current = requestAnimationFrame(animate);
+  };
+
+  useEffect(() => {
+    requestRef.current = requestAnimationFrame(animate);
+    return () => cancelAnimationFrame(requestRef.current);
+  }, [mapGrid, zoom, cameraPos, placementMode, loadedImages, draggedBuilding, ghostPos, selectedBuilding]); 
+
+  // --- INTERACTION HANDLERS ---
+  const screenToGrid = (screenX, screenY) => {
+    const unpannedX = screenX - cameraPos.x;
+    const unpannedY = screenY - cameraPos.y;
+    const unscaledX = unpannedX / zoom;
+    const unscaledY = unpannedY / zoom;
+    const TW = TILE_WIDTH; const TH = TILE_HEIGHT;
+    const A = 2 * unscaledX / TW; const B = 2 * unscaledY / TH;
+    return { x: Math.floor((A + B) / 2), y: Math.floor((B - A) / 2) };
+  };
+
+  const handleStart = (e) => {
+    const pt = e.touches ? e.touches[0] : e;
+    if (e.touches && e.touches.length === 2) {
+      e.preventDefault(); dragRef.current.isDragging = false;
+      touchStateRef.current = { lastDistance: getDistance(e.touches), lastCenter: getCenter(e.touches), isMultiTouch: true };
+      if (longPressTimer.current) clearTimeout(longPressTimer.current);
+      return;
+    }
+    dragRef.current = { isDragging: true, startX: pt.clientX, startY: pt.clientY, initialCamX: cameraPos.x, initialCamY: cameraPos.y };
+    if (!placementMode) {
+        const gridPos = screenToGrid(pt.clientX, pt.clientY);
+        const hitBuilding = placedBuildings.find(b => b.x === gridPos.x && b.y === gridPos.y);
+        if (hitBuilding) {
+            longPressTimer.current = setTimeout(() => {
+                if (window.navigator?.vibrate) window.navigator.vibrate(50);
+                setDraggedBuilding({ ...hitBuilding });
+                dragRef.current.isDragging = false; 
+            }, 300); 
+        }
+    }
+  };
+
+  const handleMove = (e) => {
+    const pt = e.touches ? e.touches[0] : e;
+    if (placementMode || draggedBuilding) { const gridPos = screenToGrid(pt.clientX, pt.clientY); setGhostPos(gridPos); } 
+    else { setGhostPos(null); }
+    if (e.touches && e.touches.length === 2) {
+      e.preventDefault();
+      const currentDistance = getDistance(e.touches);
+      const currentCenter = getCenter(e.touches);
+      const pinchFactor = currentDistance / touchStateRef.current.lastDistance;
+      const newZoom = Math.min(Math.max(zoom * pinchFactor, 0.4), 2.5);
+      const dx = currentCenter.x - touchStateRef.current.lastCenter.x;
+      const dy = currentCenter.y - touchStateRef.current.lastCenter.y;
+      setZoom(newZoom);
+      setCameraPos({ x: cameraPos.x + dx, y: cameraPos.y + dy });
+      touchStateRef.current.lastDistance = currentDistance;
+      touchStateRef.current.lastCenter = currentCenter;
+      return;
+    } 
+    if (draggedBuilding) {
+        e.preventDefault(); 
+        const gridPos = screenToGrid(pt.clientX, pt.clientY);
+        if (gridPos.x !== draggedBuilding.x || gridPos.y !== draggedBuilding.y) {
+            setDraggedBuilding(prev => ({ ...prev, x: gridPos.x, y: gridPos.y }));
+        }
+        return;
+    }
+    if (dragRef.current.isDragging) {
+        const moveDist = Math.hypot(pt.clientX - dragRef.current.startX, pt.clientY - dragRef.current.startY);
+        if (moveDist > 10 && longPressTimer.current) { clearTimeout(longPressTimer.current); longPressTimer.current = null; }
+        const dx = pt.clientX - dragRef.current.startX;
+        const dy = pt.clientY - dragRef.current.startY;
+        setCameraPos({ x: dragRef.current.initialCamX + dx, y: dragRef.current.initialCamY + dy });
+    }
+  };
+
+  const handleEnd = (e) => {
+    if (longPressTimer.current) { clearTimeout(longPressTimer.current); longPressTimer.current = null; }
+    if (draggedBuilding) {
+        const { x, y } = draggedBuilding;
+        const occupied = placedBuildings.some(b => b.uniqueId !== draggedBuilding.uniqueId && b.x === x && b.y === y);
+        const valid = !occupied && x >= 0 && x < MAP_SIZE && y >= 0 && y < MAP_SIZE;
+        if (valid) { setPlacedBuildings(prev => prev.map(b => b.uniqueId === draggedBuilding.uniqueId ? { ...b, x, y } : b)); }
+        setDraggedBuilding(null); setGhostPos(null); return;
+    }
+    const wasMultiTouch = touchStateRef.current.isMultiTouch;
+    dragRef.current.isDragging = false;
+    touchStateRef.current.isMultiTouch = false;
+    if (!wasMultiTouch) { 
+        const pt = e.changedTouches ? e.changedTouches[0] : e;
+        const dist = Math.hypot(pt.clientX - dragRef.current.startX, pt.clientY - dragRef.current.startY);
+        if (dist < 10) {
+            const gridPos = screenToGrid(pt.clientX, pt.clientY);
+            if (gridPos.x >= 0 && gridPos.x < MAP_SIZE && gridPos.y >= 0 && gridPos.y < MAP_SIZE) {
+                onMapTap(gridPos.x, gridPos.y);
+            }
+        }
+    }
+  };
+
+  const handleWheel = (e) => {
+    const delta = -Math.sign(e.deltaY) * 0.1;
+    setZoom(prev => Math.min(Math.max(prev + delta, 0.4), 2.5));
+  };
+  
+  const displayTime = currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const isNight = currentTime.getHours() >= 20 || currentTime.getHours() < 5;
+
+  return (
+    <div className="relative w-full h-full">
+      <canvas ref={canvasRef} onMouseDown={handleStart} onMouseMove={handleMove} onMouseUp={handleEnd} onWheel={handleWheel} onTouchStart={handleStart} onTouchMove={handleMove} onTouchEnd={handleEnd} className="block w-full h-full touch-none outline-none" />
+      {/* Clock removed as per request */}
+      {draggedBuilding && (
+          <div className="absolute top-20 left-0 w-full flex justify-center z-30 pointer-events-none animate-pulse">
+            <div className="bg-yellow-500/80 text-black px-4 py-1 rounded-full font-bold text-xs shadow-xl backdrop-blur-sm">Moving {draggedBuilding.name}...</div>
+          </div>
+      )}
+    </div>
+  );
+};
+
+function App() {
+  const [loading, setLoading] = useState(true);
+  const [loadingQuote, setLoadingQuote] = useState("Establishing secure connection to the blockchain..."); 
+  const [balance, setBalance] = useState(10000); 
+  const [profitPerHour, setProfitPerHour] = useState(0);
+  // Default to 5500 (Level 1 limit) instead of 5000, so new players start full.
+  const [energy, setEnergy] = useState(5500); 
+  const [activeTab, setActiveTab] = useState('mine'); 
+  const [availableBuildings, setAvailableBuildings] = useState(INITIAL_BUILDINGS); 
+  const [placedBuildings, setPlacedBuildings] = useState([]); 
+  const [placementMode, setPlacementMode] = useState(null); 
+  const [selectedBuilding, setSelectedBuilding] = useState(null);
+  const [businesses, setBusinesses] = useState(INITIAL_BUSINESSES);
+  
+  // CHARACTER STATE
+  const [equippedSkinId, setEquippedSkinId] = useState(1);
+  const [unlockedSkins, setUnlockedSkins] = useState([1]); // Default skin is unlocked
+  const [processedSkinUrls, setProcessedSkinUrls] = useState({}); // Stores processed (transparent) skin images
+  const [processedBalanceIconUrl, setProcessedBalanceIconUrl] = useState(null);
+
+  // BOOSTER STATE
+  const [boosters, setBoosters] = useState({
+      multitap: { level: 1, baseCost: 1000, name: "Income per Tap" },
+      energyLimit: { level: 1, baseCost: 2000, name: "Energy Limit" },
+      rechargingSpeed: { level: 1, baseCost: 2000, name: "Recharging Speed" },
+      dailyFullEnergy: { current: 3, max: 3, lastReset: new Date().toDateString() }
+  });
+
+  // TASK STATE
+  const [taskStatus, setTaskStatus] = useState({}); 
+
+  // DAILY LOGIN STATE
+  const [dailyLogin, setDailyLogin] = useState({
+      lastLoginDate: null, // "YYYY-MM-DD"
+      streak: 1, // Start with 1 to avoid index errors on Day 1
+      claimedToday: false
+  });
+
+  // CRISIS STATE (NEW)
+  const [currentCrisis, setCurrentCrisis] = useState(null);
+
+  const [musicEnabled, setMusicEnabled] = useState(true);
+  const audioContextRef = useRef(null);
+  const musicIntervalRef = useRef(null);
+
+  const [cameraPos, setCameraPos] = useState(() => {
+    const WORLD_CENTER_Y_UNSCALED = (MAP_SIZE) * TILE_HEIGHT / 2; 
+    return { x: window.innerWidth / 2, y: (window.innerHeight / 2) - WORLD_CENTER_Y_UNSCALED };
+  }); 
+  const [aiOutput, setAiOutput] = useState("Welcome, Mayor! I am your AI assistant.");
+  const [isAiLoading, setIsAiLoading] = useState(false);
+  const [customBuildName, setCustomBuildName] = useState("");
+  const [isBuildingGen, setIsBuildingGen] = useState(false);
+  const [chatMessages, setChatMessages] = useState([{ sender: 'ceo', text: "Meow. I'm the CEO. Make me rich. 😼" }]);
+  const [userMessage, setUserMessage] = useState("");
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  
+  const [isTtsLoading, setIsTtsLoading] = useState(false);
+  const audioRef = useRef(null);
+  
+  const energyInterval = useRef(null);
+  const balanceRef = useRef(balance);
+  const placedBuildingsRef = useRef(placedBuildings);
+  const businessesRef = useRef(businesses);
+  const chatEndRef = useRef(null);
+  const boostersRef = useRef(boosters);
+  const equippedSkinIdRef = useRef(equippedSkinId);
+  const unlockedSkinsRef = useRef(unlockedSkins);
+  const taskStatusRef = useRef(taskStatus);
+  const dailyLoginRef = useRef(dailyLogin);
+
+  useEffect(() => {
+    balanceRef.current = balance;
+    placedBuildingsRef.current = placedBuildings;
+    businessesRef.current = businesses;
+    boostersRef.current = boosters;
+    equippedSkinIdRef.current = equippedSkinId;
+    unlockedSkinsRef.current = unlockedSkins;
+    taskStatusRef.current = taskStatus;
+    dailyLoginRef.current = dailyLogin;
+  }, [balance, placedBuildings, businesses, boosters, equippedSkinId, unlockedSkins, taskStatus, dailyLogin]);
+  
+  // --- AUDIO SYNTHESIZER ---
+  const initAudio = () => {
+      if (!audioContextRef.current) {
+          audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      if (audioContextRef.current.state === 'suspended') {
+          audioContextRef.current.resume();
+      }
+  };
+
+  const playSynthSound = (type) => {
+      initAudio();
+      if (!audioContextRef.current) return;
+      const ctx = audioContextRef.current;
+      const now = ctx.currentTime;
+      
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      osc.type = type === 'tap' ? 'sine' : 'square'; 
+      const freq = type === 'tap' ? 440 : 220; 
+      
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      
+      gain.gain.setValueAtTime(0, now);
+      gain.gain.linearRampToValueAtTime(0.3, now + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.5);
+      
+      osc.frequency.setValueAtTime(freq, now);
+      osc.start(now);
+      osc.stop(now + 0.5);
+  };
+
+  // --- BACKGROUND MUSIC (LO-FI GENERATOR) ---
+  useEffect(() => {
+    if (musicEnabled) {
+        initAudio();
+        
+        // Sequencer State
+        let tick = 0;
+        const ticksPerChord = 8; // Change chord every 8 ticks
+        const tickTime = 500; // 500ms per tick (120 BPM half-time feel)
+
+        // Lo-Fi Progression: Fmaj7 | Em7 | Dm7 | Cmaj7
+        const progression = [
+            { root: 87.31, notes: [174.61, 220.00, 261.63, 329.63] }, // Fmaj7 (F2 bass, F3-A3-C4-E4)
+            { root: 82.41, notes: [164.81, 196.00, 246.94, 293.66] }, // Em7 (E2 bass, E3-G3-B3-D4)
+            { root: 73.42, notes: [146.83, 174.61, 220.00, 261.63] }, // Dm7 (D2 bass, D3-F3-A3-C4)
+            { root: 65.41, notes: [130.81, 164.81, 196.00, 246.94] }, // Cmaj7 (C2 bass, C3-E3-G3-B3)
+        ];
+
+        // C Major Pentatonic Scale for Melody (fits all chords in this key)
+        const melodyScale = [261.63, 293.66, 329.63, 392.00, 440.00, 523.25, 587.33]; // C4, D4, E4, G4, A4, C5, D5
+
+        const playTick = () => {
+            if (!audioContextRef.current || !musicEnabled) return;
+            const ctx = audioContextRef.current;
+            const now = ctx.currentTime;
+
+            const chordIndex = Math.floor(tick / ticksPerChord) % progression.length;
+            const currentChord = progression[chordIndex];
+            const beatInChord = tick % ticksPerChord;
+
+            // --- 1. CHORDS (Pad Layer) ---
+            if (beatInChord === 0) {
+                 currentChord.notes.forEach((freq, i) => {
+                     const osc = ctx.createOscillator();
+                     const gain = ctx.createGain();
+                     
+                     // Use fallback if StereoPanner is not available
+                     const pan = ctx.createStereoPanner ? ctx.createStereoPanner() : null;
+                     
+                     osc.type = 'sine'; 
+                     osc.frequency.setValueAtTime(freq, now);
+                     osc.detune.setValueAtTime(Math.random() * 10 - 5, now); 
+
+                     osc.connect(pan || gain);
+                     if(pan) pan.connect(gain);
+                     gain.connect(ctx.destination);
+                     
+                     const duration = (ticksPerChord * tickTime) / 1000;
+                     gain.gain.setValueAtTime(0, now);
+                     gain.gain.linearRampToValueAtTime(0.03, now + 1.0); 
+                     gain.gain.setValueAtTime(0.02, now + duration - 1.0); 
+                     gain.gain.exponentialRampToValueAtTime(0.001, now + duration); 
+                     
+                     osc.start(now);
+                     osc.stop(now + duration);
+                 });
+            }
+
+            // --- 2. BASS (Deep Layer) ---
+            if (beatInChord === 0 || (beatInChord === 4 && Math.random() > 0.4)) {
+                const bassOsc = ctx.createOscillator();
+                const bassGain = ctx.createGain();
+                const filter = ctx.createBiquadFilter();
+
+                bassOsc.type = 'triangle'; 
+                bassOsc.frequency.setValueAtTime(currentChord.root, now);
+                
+                filter.type = 'lowpass';
+                filter.frequency.setValueAtTime(400, now);
+
+                bassOsc.connect(filter);
+                filter.connect(bassGain);
+                bassGain.connect(ctx.destination);
+
+                bassGain.gain.setValueAtTime(0, now);
+                bassGain.gain.linearRampToValueAtTime(0.15, now + 0.1); 
+                bassGain.gain.exponentialRampToValueAtTime(0.01, now + 1.5); 
+
+                bassOsc.start(now);
+                bassOsc.stop(now + 1.5);
+            }
+
+            // --- 3. MELODY (Lead Layer) ---
+            const playMelody = Math.random() > (beatInChord % 2 === 0 ? 0.4 : 0.7);
+            
+            if (playMelody) {
+                const noteIndex = Math.floor(Math.random() * melodyScale.length);
+                const freq = melodyScale[noteIndex];
+                
+                const melOsc = ctx.createOscillator();
+                const melGain = ctx.createGain();
+                
+                melOsc.type = 'sine';
+                melOsc.frequency.setValueAtTime(freq, now);
+
+                melOsc.connect(melGain);
+                melGain.connect(ctx.destination);
+
+                melGain.gain.setValueAtTime(0, now);
+                melGain.gain.linearRampToValueAtTime(0.05, now + 0.05); 
+                melGain.gain.exponentialRampToValueAtTime(0.001, now + 0.8); 
+
+                melOsc.start(now);
+                melOsc.stop(now + 0.8);
+            }
+
+            // --- 4. TEXTURE (Vinyl Crackle/Hiss) ---
+            if (Math.random() > 0.9) {
+                 const noiseOsc = ctx.createOscillator();
+                 const noiseGain = ctx.createGain();
+                 noiseOsc.type = 'sawtooth'; 
+                 noiseOsc.frequency.setValueAtTime(Math.random() * 100, now); 
+                 noiseGain.gain.setValueAtTime(0.005, now);
+                 noiseGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.1);
+                 
+                 noiseOsc.connect(noiseGain);
+                 noiseGain.connect(ctx.destination);
+                 
+                 noiseOsc.start(now);
+                 noiseOsc.stop(now + 0.1);
+            }
+
+            tick++;
+        };
+
+        playTick(); 
+        musicIntervalRef.current = setInterval(playTick, tickTime);
+    } else {
+        if (musicIntervalRef.current) clearInterval(musicIntervalRef.current);
+    }
+    
+    return () => {
+        if (musicIntervalRef.current) clearInterval(musicIntervalRef.current);
+    };
+  }, [musicEnabled]);
+
+  const toggleMusic = () => {
+      setMusicEnabled(prev => !prev);
+  }
+  
+  // --- LOAD AND PROCESS SKINS ---
+  useEffect(() => {
+      const loadSkins = async () => {
+          const processed = {};
+          for (const skin of CHARACTER_SKINS) {
+              processed[skin.id] = await processSkinImage(skin.imageUrl);
+          }
+          setProcessedSkinUrls(processed);
+
+          const processedIcon = await processSkinImage(BALANCE_ICON_URL);
+          setProcessedBalanceIconUrl(processedIcon);
+      };
+      loadSkins();
+  }, []);
+
+  // --- PASSIVE INCOME LOOP ---
+  useEffect(() => {
+    const incomeTimer = setInterval(() => {
+      if (profitPerHour > 0) {
+        // Calculate earnings for 1 second (Profit Per Hour / 3600)
+        const profitPerSecond = profitPerHour / 3600;
+        setBalance(prev => prev + profitPerSecond);
+      }
+    }, 1000); // Runs every second
+
+    return () => clearInterval(incomeTimer);
+  }, [profitPerHour]);
+
+  useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [chatMessages, isChatOpen]);
+
+  const apiKey = ""; 
+  const textModel = "gemini-2.5-flash-preview-09-2025";
+  const ttsModel = "gemini-2.5-flash-preview-tts";
+  
+  // --- CRISIS SCHEMA FOR STRUCTURED OUTPUT ---
+  const CRISIS_SCHEMA = {
+      type: "OBJECT",
+      properties: {
+          crisis_title: { type: "STRING", description: "A catchy, urgent title for the crisis." },
+          crisis_report: { type: "STRING", description: "A two-sentence narrative explaining the crisis and its immediate game threat, focusing on crypto/finance theme." },
+          options: {
+              type: "ARRAY",
+              description: "Three distinct, actionable choices for the player.",
+              items: {
+                  type: "OBJECT",
+                  properties: {
+                      action_name: { type: "STRING", description: "A brief, decisive action name (e.g., 'Liquidate Assets', 'Hold the Line')." },
+                      action_impact: { type: "STRING", description: "A high-level risk/reward summary (e.g., 'High Risk, High Reward', 'Safe but Slow Recovery')." },
+                      effect_on_balance: { type: "NUMBER", description: "The immediate change to the player's coin balance. Must be a large integer." },
+                      effect_on_pph: { type: "NUMBER", description: "The immediate change to the player's PPH. Can be positive or negative." },
+                      justification: { type: "STRING", description: "A short, two-sentence explanation of why this decision yields this outcome." }
+                  },
+                  required: ["action_name", "action_impact", "effect_on_balance", "effect_on_pph", "justification"]
+              },
+              minItems: 3,
+              maxItems: 3
+          }
+      },
+      required: ["crisis_title", "crisis_report", "options"]
+  };
+
+  const callGeminiMarketWatch = async () => {
+    setIsAiLoading(true);
+    setAiOutput("Analyzing real-time market data...");
+    const userQuery = `Analyze the current financial sentiment and recent news headlines related to cryptocurrency and decentralized finance (DeFi). Based on the analysis, provide a single, actionable recommendation for a crypto-themed city builder game player. The advice should be thematic (e.g., focus on 'industrial' mining, or invest in 'finance' exchanges). Current profit/hr is ${profitPerHour}.`;
+    const systemPrompt = "You are a highly volatile, AI-powered financial prediction engine. Your response must be concise, single-paragraph, and provide an unambiguous building recommendation (residential, industrial, or finance).";
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${textModel}:generateContent?key=${apiKey}`;
+    const payload = { contents: [{ parts: [{ text: userQuery }] }], tools: [{ "google_search": {} }], systemInstruction: { parts: [{ text: systemPrompt }] } };
+    try {
+      const res = await fetch(apiUrl, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+      const d = await res.json();
+      const text = d.candidates?.[0]?.content?.parts?.[0]?.text || "Market watch is offline. Proceed with caution.";
+      let sourceText = '';
+      const groundingMetadata = d.candidates?.[0]?.groundingMetadata;
+      if (groundingMetadata && groundingMetadata.groundingAttributions) {
+          const sources = groundingMetadata.groundingAttributions.map(attr => attr.web?.title).filter(title => title);
+          if (sources.length > 0) sourceText = ` (Sources: ${sources.slice(0, 2).join(', ')})`;
+      }
+      setAiOutput(text + sourceText);
+    } catch (e) { setAiOutput("Market data transmission failed due to high volatility. Try again."); } finally { setIsAiLoading(false); }
+  };
+  
+  // NEW CRISIS GENERATION FUNCTION
+  const callGeminiCrisis = async () => {
+    if (currentCrisis) return; // Prevent generating a new one if one is active
+    
+    setIsAiLoading(true);
+    setCurrentCrisis(null);
+    setAiOutput("Generating economic disaster report...");
+    
+    const bSummary = placedBuildings.map(b => `${b.name} (Lvl ${b.level})`).join(", ");
+    const userQuery = `Generate a high-stakes crypto-related crisis event for a city builder game. The city's current economy relies on: ${bSummary || 'starting buildings'}. Current balance: ${balance.toLocaleString()}. Current PPH: ${profitPerHour.toLocaleString()}. Create a crisis event with three distinct player choices, detailing the immediate impact on the player's balance and Profit Per Hour (PPH) if they choose each option. Ensure the numerical impacts are realistic given the current balance/PPH but feel significant (e.g., if PPH is 10k, effects should be in the thousands range).`;
+    
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${textModel}:generateContent?key=${apiKey}`;
+    const payload = { 
+        contents: [{ parts: [{ text: userQuery }] }], 
+        generationConfig: { 
+            responseMimeType: "application/json", 
+            responseSchema: CRISIS_SCHEMA 
+        } 
+    };
+
+    try {
+      const res = await fetch(apiUrl, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+      const d = await res.json();
+      const jsonText = d.candidates?.[0]?.content?.parts?.[0]?.text;
+      const crisisData = JSON.parse(jsonText);
+      setCurrentCrisis(crisisData);
+      setAiOutput(crisisData.crisis_report);
+    } catch (e) { 
+        console.error("Crisis Generation Error:", e);
+        setAiOutput("System Error: Failed to simulate crisis. The blockchain is too stable today."); 
+        setCurrentCrisis(null);
+    } finally { setIsAiLoading(false); }
+  };
+
+  const handleCrisisDecision = (option) => {
+      setBalance(prev => prev + option.effect_on_balance);
+      setProfitPerHour(prev => prev + option.effect_on_pph);
+      
+      const outcomeMessage = `${option.action_name} chosen: ${option.justification} | Result: Balance change ${option.effect_on_balance.toLocaleString()} coins, PPH change ${option.effect_on_pph.toLocaleString()}/hr.`;
+      
+      setAiOutput(`[CRISIS RESOLVED] ${outcomeMessage}`);
+      setCurrentCrisis(null);
+  };
+
+  const callGeminiTTS = async () => {
+    if (isTtsLoading) return;
+    setIsTtsLoading(true);
+    const formattedBalance = Math.floor(balance).toLocaleString();
+    const formattedProfit = profitPerHour.toLocaleString();
+    const prompt = `State in an authoritative, commanding tone: "Mayor, your current treasury balance is ${formattedBalance} coins, with a passive income flow of ${formattedProfit} coins per hour. Focus on maximizing profit immediately."`;
+    const payload = { contents: [{ parts: [{ text: prompt }] }], generationConfig: { responseModalities: ["AUDIO"], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: "Kore" } } } }, model: ttsModel };
+    try {
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${ttsModel}:generateContent?key=${apiKey}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+        const result = await response.json();
+        const audioData = result?.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+        if (audioData) {
+            const wavBlob = pcmToWav(new Int16Array(base64ToArrayBuffer(audioData)), 24000);
+            const url = URL.createObjectURL(wavBlob);
+            if (audioRef.current) { audioRef.current.pause(); URL.revokeObjectURL(audioRef.current.src); }
+            audioRef.current = new Audio(url);
+            audioRef.current.play();
+            audioRef.current.onended = () => setIsTtsLoading(false);
+            audioRef.current.onerror = () => setIsTtsLoading(false);
+        } else { setIsTtsLoading(false); }
+    } catch (e) { console.error("TTS Error:", e); setIsTtsLoading(false); }
+  };
+
+  const callGeminiAI = async (promptType) => {
+    setIsAiLoading(true);
+    setAiOutput("Thinking...");
+    let prompt = "";
+    const bSummary = placedBuildings.map(b => b.name).join(", ");
+    if (promptType === 'advice') prompt = `Sarcastic crypto mayor advisor. Balance: ${balance}. Buildings: ${bSummary}. 1 short witty advice.`;
+    else if (promptType === 'news') prompt = `Breaking news headline for crypto city: ${bSummary}. Max 15 words. Funny.`;
+    try {
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${textModel}:generateContent?key=${apiKey}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }) });
+      const d = await res.json();
+      setAiOutput(d.candidates?.[0]?.content?.parts?.[0]?.text || "Error.");
+    } catch (e) { setAiOutput("AI Offline."); } finally { setIsAiLoading(false); }
+  };
+
+  const generateBuilding = async () => {
+    if (!customBuildName.trim()) return;
+    setIsBuildingGen(true); 
+    try {
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${textModel}:generateContent?key=${apiKey}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ contents: [{ parts: [{ text: `Create building "${customBuildName}". Balance ${balance}. JSON ONLY: { "name": string, "cost": number, "income": number, "type": "residential"|"industrial"|"finance" }` }] }], generationConfig: { responseMimeType: "application/json" } }) });
+      const d = await res.json();
+      const bData = JSON.parse(d.candidates?.[0]?.content?.parts?.[0]?.text);
+      setAvailableBuildings(prev => [...prev, { id: Date.now(), name: bData.name, cost: bData.cost, income: bData.income, level: 1, type: bData.type, icon: <Building2 size={24} className="text-purple-400"/>, imageUrl: null, isCustom: true }]);
+      setCustomBuildName(""); alert("Blueprint Created! Check Construction Menu.");
+    } catch (e) { console.error(e); alert("Failed."); } finally { setIsBuildingGen(false); }
+  };
+
+  const sendChatMessage = async () => {
+    if (!userMessage.trim()) return;
+    const msg = userMessage;
+    setChatMessages(prev => [...prev, { sender: 'user', text: msg }]);
+    setUserMessage("");
+    try {
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${textModel}:generateContent?key=${apiKey}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ contents: [{ parts: [{ text: `Roleplay as Cat CEO. Greedy. User: "${msg}". Reply short.` }] }] }) });
+      const data = await response.json();
+      setChatMessages(prev => [...prev, { sender: 'ceo', text: data.candidates[0].content.parts[0].text }]);
+    } catch (e) { setChatMessages(prev => [...prev, { sender: 'ceo', text: "Hiss..." }]); } 
+  };
+  
+  const handleEquipSkin = (skinId) => {
+    if (unlockedSkins.includes(skinId)) {
+        setEquippedSkinId(skinId);
+    }
+  };
+
+  const handleTap = (e) => {
+    // Prevent default browser behavior on rapid taps (like zoom/scroll)
+    if (e && e.cancelable) {
+        try { e.preventDefault(); } catch(err) {}
+    }
+
+    if (energy < 10) return;
+    // TAP FORMULA: 1 + (Multitap Level) + (ProfitPerHour / 1000)
+    const tapValue = 1 + (boosters.multitap.level - 1) + Math.floor(profitPerHour/1000);
+    setBalance(p => p + tapValue);
+    setEnergy(p => p - 10);
+    if (window.navigator?.vibrate) window.navigator.vibrate(10);
+  };
+
+  const useFullEnergy = () => {
+      if (boosters.dailyFullEnergy.current > 0) {
+          setEnergy(5000 + (boosters.energyLimit.level * 500)); // Restore to Max
+          setBoosters(prev => ({
+              ...prev,
+              dailyFullEnergy: { ...prev.dailyFullEnergy, current: prev.dailyFullEnergy.current - 1 }
+          }));
+          if (window.navigator?.vibrate) window.navigator.vibrate([50, 50]);
+      }
+  };
+
+  const upgradeBooster = (type) => {
+      const booster = boosters[type];
+      const cost = Math.floor(booster.baseCost * Math.pow(2, booster.level - 1));
+      
+      if (balance >= cost) {
+          setBalance(prev => prev - cost);
+          setBoosters(prev => ({
+              ...prev,
+              [type]: { ...booster, level: booster.level + 1 }
+          }));
+          if (window.navigator?.vibrate) window.navigator.vibrate(50);
+      } else {
+          alert("Insufficient funds!");
+      }
+  };
+
+  // --- TASK LOGIC ---
+  const TASKS_DATA = [
+      { 
+          id: 'task_x_follow', 
+          title: "Follow HHC City on X", 
+          reward: 10000, 
+          link: X_OFFICIAL_LINK, 
+          icon: <Twitter size={20} className="text-blue-400"/>,
+          description: "Follow our official channel for qualification."
+      },
+      { 
+          id: 'task_x_like', 
+          title: "Like Latest Post", 
+          reward: 5000, 
+          link: X_OFFICIAL_LINK, 
+          icon: <Heart size={20} className="text-red-400"/>,
+          description: "Like our pinned post to show support."
+      }
+  ];
+
+  const handleTaskAction = (taskId, link) => {
+      // 1. Open Link
+      window.open(link, '_blank');
+      
+      // 2. Set status to 'pending_verify' to show the "Check" button
+      if (!taskStatus[taskId]) {
+          setTaskStatus(prev => ({ ...prev, [taskId]: 'pending_verify' }));
+      }
+  };
+
+  const handleVerifyTask = (taskId) => {
+      // Simulate verification loading state
+      setTaskStatus(prev => ({ ...prev, [taskId]: 'verifying' }));
+
+      // Mock delay to simulate API call (2.5 seconds)
+      setTimeout(() => {
+          setTaskStatus(prev => ({ ...prev, [taskId]: 'claim_ready' }));
+          if (window.navigator?.vibrate) window.navigator.vibrate(20);
+      }, 2500);
+  };
+
+  const handleClaimTask = (taskId, reward) => {
+      if (taskStatus[taskId] === 'claim_ready') {
+          setBalance(prev => prev + reward);
+          setTaskStatus(prev => ({ ...prev, [taskId]: 'completed' }));
+          if (window.navigator?.vibrate) window.navigator.vibrate([50, 50, 50]);
+      }
+  };
+
+  // --- DAILY LOGIN LOGIC ---
+  const checkDailyLogin = (currentState) => {
+    const today = new Date().toISOString().split('T')[0];
+    const lastLogin = currentState.lastLoginDate;
+
+    if (!lastLogin) {
+        // First ever login
+        return { lastLoginDate: today, streak: 1, claimedToday: false }; // Update date to today
+    }
+
+    if (lastLogin === today) {
+        // Already processed today
+        return currentState;
+    }
+
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = yesterday.toISOString().split('T')[0];
+
+    if (lastLogin === yesterdayStr) {
+        // Consecutive - MARK TODAY AS VISITED, Increment Streak
+        return { 
+            lastLoginDate: today, 
+            streak: currentState.streak + 1, 
+            claimedToday: false 
+        };
+    } else {
+        // Broken - MARK TODAY AS VISITED, Reset Streak
+        return { lastLoginDate: today, streak: 1, claimedToday: false }; 
+    }
+  };
+
+  const handleClaimDaily = () => {
+      if (dailyLogin.claimedToday) return;
+
+      const currentStreak = Math.max(1, dailyLogin.streak);
+      const rewardIndex = Math.min(currentStreak - 1, DAILY_REWARDS.length - 1);
+      const reward = DAILY_REWARDS[rewardIndex] || 0; 
+
+      setBalance(prev => prev + reward);
+      const today = new Date().toISOString().split('T')[0];
+      
+      setDailyLogin(prev => ({
+          lastLoginDate: today,
+          streak: prev.streak, // REMOVED + 1 (Fix: streak increments on next login, not claim)
+          claimedToday: true
+      }));
+
+      if (window.navigator?.vibrate) window.navigator.vibrate([50, 100, 50]);
+  };
+
+  const initPlacement = (building) => {
+    const alreadyOwn = placedBuildings.some(pb => pb.id === building.id);
+    if (alreadyOwn) { alert("You already own this building! Select it on the map to upgrade."); return; }
+    if (balance < building.cost) return;
+    setPlacementMode(building);
+    setActiveTab('city'); 
+    setSelectedBuilding(null);
+  };
+
+  const handleMapTap = (x, y) => {
+    if (placementMode) {
+      const occupied = placedBuildings.some(b => b.x === x && b.y === y);
+      if (!occupied) {
+        const newBuilding = { ...placementMode, x, y, level: 1, uniqueId: Date.now() };
+        setPlacedBuildings(prev => [...prev, newBuilding]);
+        setBalance(prev => prev - placementMode.cost);
+        setPlacementMode(null); 
+      } else { alert("Space occupied!"); }
+    } else {
+        const building = placedBuildings.find(b => b.x === x && b.y === y);
+        if (building) { setSelectedBuilding(building); if (window.navigator?.vibrate) window.navigator.vibrate(20); } 
+        else { setSelectedBuilding(null); }
+    }
+  };
+
+  const upgradeBuilding = () => {
+      if (!selectedBuilding) return;
+      if (selectedBuilding.level >= 100) return;
+      const upgradeCost = Math.floor(selectedBuilding.cost * Math.pow(1.5, selectedBuilding.level));
+      if (balance >= upgradeCost) {
+          setBalance(prev => prev - upgradeCost);
+          setPlacedBuildings(prev => prev.map(b => {
+              if (b.uniqueId === selectedBuilding.uniqueId) {
+                  const newLevel = b.level + 1;
+                  const newIncome = Math.floor(b.income * 1.2); 
+                  const updated = { ...b, level: newLevel, income: newIncome };
+                  setSelectedBuilding(updated); 
+                  return updated;
+              }
+              return b;
+          }));
+          if (window.navigator?.vibrate) window.navigator.vibrate([50, 50, 50]);
+      } else { alert("Insufficient funds!"); }
+  };
+
+  // --- BUSINESS LOGIC ---
+  const upgradeBusiness = (id) => {
+    const bus = businesses.find(b => b.id === id);
+    if (!bus || bus.level >= 100) return;
+
+    // Calculate dynamic cost based on level (same formula as buildings for scaling)
+    const cost = Math.floor(bus.baseCost * Math.pow(1.5, bus.level));
+
+    if (balance >= cost) {
+      setBalance(prev => prev - cost);
+      setBusinesses(prev => prev.map(b => {
+        if (b.id === id) {
+           return { ...b, level: b.level + 1 };
+        }
+        return b;
+      }));
+      if (window.navigator?.vibrate) window.navigator.vibrate(50);
+    } else { alert("Insufficient funds!"); }
+  };
+
+  const cancelPlacement = () => { setPlacementMode(null); };
+
+  useEffect(() => {
+    const saved = localStorage.getItem('hhc_city_save_v3'); 
+    if (saved) {
+      try {
+        const p = JSON.parse(saved);
+        if (p.balance) setBalance(p.balance);
+        if (p.placedBuildings) setPlacedBuildings(p.placedBuildings);
+        if (p.availableBuildings && p.availableBuildings.length > 0) {
+            const restored = p.availableBuildings.map(b => ({ ...b, icon: getIconForType(b.type) }));
+            setAvailableBuildings(restored);
+        } else { setAvailableBuildings(INITIAL_BUILDINGS); }
+        // Load businesses
+        if (p.businesses) {
+             const merged = INITIAL_BUSINESSES.map(initB => {
+                 const savedB = p.businesses.find(s => s.id === initB.id);
+                 return savedB ? { ...initB, level: savedB.level } : initB;
+             });
+             setBusinesses(merged);
+        }
+        // Load Boosters
+        if (p.boosters) {
+             // Check if daily reset needed
+             const today = new Date().toDateString();
+             const last = p.boosters.dailyFullEnergy?.lastReset;
+             let daily = p.boosters.dailyFullEnergy || { current: 3, max: 3, lastReset: today };
+             
+             if (last !== today) {
+                 daily = { current: 3, max: 3, lastReset: today };
+             }
+             
+             setBoosters(prev => ({ ...prev, ...p.boosters, dailyFullEnergy: daily }));
+             
+             // --- FORCE FULL ENERGY ON LOAD ---
+             // Calculate max energy based on loaded (or default) booster level
+             const loadedLevel = p.boosters.energyLimit?.level || 1;
+             const maxEnergy = 5000 + (loadedLevel * 500);
+             setEnergy(maxEnergy);
+        }
+        // Load Character Skins
+        if (p.equippedSkinId) setEquippedSkinId(p.equippedSkinId);
+        if (p.unlockedSkins) setUnlockedSkins(p.unlockedSkins);
+        // Load Task Status
+        if (p.taskStatus) setTaskStatus(p.taskStatus);
+        // Load Daily Login
+        if (p.dailyLogin) {
+            setDailyLogin(checkDailyLogin(p.dailyLogin));
+        } else {
+            setDailyLogin({ lastLoginDate: null, streak: 1, claimedToday: false });
+        }
+
+      } catch (e) { 
+        setAvailableBuildings(INITIAL_BUILDINGS); 
+        setBusinesses(INITIAL_BUSINESSES);
+        setEquippedSkinId(1); 
+        setUnlockedSkins([1]); 
+        setDailyLogin({ lastLoginDate: null, streak: 1, claimedToday: false });
+      }
+    }
+
+    const getQuote = async () => {
+      try {
+        const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${textModel}:generateContent?key=${apiKey}`, { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({ contents: [{ parts: [{ text: "1 short funny crypto quote for loading screen." }] }] }) });
+        const d = await r.json();
+        setLoadingQuote(d.candidates?.[0]?.content?.parts?.[0]?.text || "HODL tight...");
+      } catch (e) { setLoadingQuote("Loading blockchain..."); }
+    };
+    getQuote();
+    const loadTimer = setTimeout(() => setLoading(false), 5000);
+
+    // Dynamic Energy Recovery
+    energyInterval.current = setInterval(() => {
+        const recoveryRate = 3 + boostersRef.current.rechargingSpeed.level;
+        const maxEnergy = 5000 + (boostersRef.current.energyLimit.level * 500);
+        setEnergy(p => Math.min(p + recoveryRate, maxEnergy));
+    }, 1000);
+
+    const saveInt = setInterval(() => {
+      // Calculate Total PPH: Buildings + Businesses
+      const buildingPPH = placedBuildingsRef.current.reduce((acc, b) => acc + (b.income || 0), 0);
+      const businessPPH = businessesRef.current.reduce((acc, b) => {
+          if (b.level === 0) return acc;
+          const income = Math.floor(b.baseIncome * Math.pow(1.2, b.level - 1));
+          return acc + income;
+      }, 0);
+      
+      const totalPPH = buildingPPH + businessPPH;
+
+      // --- Generic Skin Unlock Check ---
+      CHARACTER_SKINS.forEach(skin => {
+          if (!unlockedSkinsRef.current.includes(skin.id) && totalPPH >= skin.unlockPPH) {
+               // Use setTimeout to ensure state update works outside the setter context
+               setTimeout(() => {
+                    setUnlockedSkins(prev => [...prev, skin.id]);
+                    setAiOutput(`New Skin Unlocked: ${skin.name}! Passive income reached ${skin.unlockPPH.toLocaleString()}/hr.`);
+                }, 0);
+          }
+      });
+
+      setProfitPerHour(totalPPH);
+      
+      localStorage.setItem('hhc_city_save_v3', JSON.stringify({
+        balance: balanceRef.current,
+        placedBuildings: placedBuildingsRef.current,
+        availableBuildings: availableBuildings,
+        businesses: businessesRef.current,
+        boosters: boostersRef.current,
+        equippedSkinId: equippedSkinIdRef.current,
+        unlockedSkins: unlockedSkinsRef.current,
+        taskStatus: taskStatusRef.current,
+        dailyLogin: dailyLoginRef.current
+      }));
+    }, 2000);
+    return () => { 
+        clearInterval(energyInterval.current); 
+        clearInterval(saveInt); 
+        clearTimeout(loadTimer);
+        if (audioRef.current) URL.revokeObjectURL(audioRef.current.src);
+    };
+  }, []);
+
+  const currentSkin = CHARACTER_SKINS.find(s => s.id === equippedSkinId) || CHARACTER_SKINS[0];
+
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center w-full h-screen bg-black relative overflow-hidden">
+        <div className="absolute inset-0 z-0 opacity-50 bg-cover bg-center" style={{ backgroundImage: `url(${LOADING_BG_IMAGE})` }} />
+        <div className="z-10 flex flex-col items-center animate-pulse px-4 text-center">
+          <h1 className="text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-yellow-600 drop-shadow-lg mb-4">$HHC</h1>
+          <p className="text-white tracking-widest uppercase mb-6">Loading City...</p>
+          <div className="bg-black/60 backdrop-blur-md p-4 rounded-xl border border-yellow-500/30 max-w-xs">
+            <p className="text-yellow-200 text-sm italic font-medium">"{loadingQuote}"</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="w-full h-screen text-white flex flex-col overflow-hidden font-sans select-none" style={{ background: GAME_BG_GRADIENT }}>
+      {activeTab === 'city' && (
+        <div className="absolute inset-0 z-0">
+          <CityMap 
+            placedBuildings={placedBuildings} 
+            setPlacedBuildings={setPlacedBuildings}
+            onMapTap={handleMapTap} 
+            placementMode={placementMode} 
+            cameraPos={cameraPos} 
+            setCameraPos={setCameraPos} 
+            setActiveTab={setActiveTab}
+            selectedBuilding={selectedBuilding}
+          />
+          {placementMode && (
+            <div className="absolute top-20 left-0 w-full flex justify-center z-50 pointer-events-none">
+               <div className="bg-black/80 text-white px-6 py-3 rounded-full border border-yellow-500 shadow-xl pointer-events-auto flex items-center gap-4 animate-in slide-in-from-top">
+                 <div className="flex flex-col"><span className="text-xs text-gray-400 uppercase font-bold">Construction Mode</span><span className="font-bold text-yellow-400">Tap Empty Grass to Place {placementMode.name}</span></div>
+                 <button onClick={cancelPlacement} className="bg-red-600/20 hover:bg-red-600 p-2 rounded-full transition-colors"><X size={16} /></button>
+               </div>
+            </div>
+          )}
+
+          {/* UPGRADE MODAL */}
+          {!placementMode && selectedBuilding && (
+              <div className="absolute bottom-28 left-0 w-full flex justify-center z-50 pointer-events-auto px-4">
+                  <div className="bg-gray-900/95 backdrop-blur-xl w-full max-w-md rounded-2xl border border-yellow-500/30 shadow-2xl overflow-hidden animate-in slide-in-from-bottom-10 fade-in">
+                      <div className="p-4 flex flex-col gap-3">
+                          <div className="flex justify-between items-start">
+                             <div>
+                                <h2 className="text-lg font-bold text-white flex items-center gap-2">{selectedBuilding.icon || <Building2/>} {selectedBuilding.name}</h2>
+                                <p className="text-xs text-blue-300 font-mono">Level {selectedBuilding.level} / 100</p>
+                             </div>
+                             <button onClick={() => setSelectedBuilding(null)} className="p-1 hover:bg-white/10 rounded-full"><X size={18} className="text-gray-400"/></button>
+                          </div>
+                          <div className="grid grid-cols-2 gap-2 text-sm">
+                             <div className="bg-black/40 p-2 rounded-lg border border-white/5">
+                                 <span className="text-gray-400 text-xs">Income/hr</span>
+                                 <div className="flex items-center gap-1 font-bold text-green-400">+{selectedBuilding.income.toLocaleString()}<ArrowUpCircle size={12} className="text-green-400"/><span className="text-white/60 text-[10px]">+{Math.floor(selectedBuilding.income * 0.2).toLocaleString()}</span></div>
+                             </div>
+                             <div className="bg-black/40 p-2 rounded-lg border border-white/5">
+                                 <span className="text-gray-400 text-xs">Type</span>
+                                 <div className="font-bold capitalize text-yellow-500">{selectedBuilding.type}</div>
+                             </div>
+                          </div>
+                          <button disabled={selectedBuilding.level >= 100 || balance < Math.floor(selectedBuilding.cost * Math.pow(1.5, selectedBuilding.level))} onClick={upgradeBuilding} className={`w-full py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all active:scale-95 ${selectedBuilding.level >= 100 ? 'bg-gray-700 text-gray-400 cursor-not-allowed' : balance >= Math.floor(selectedBuilding.cost * Math.pow(1.5, selectedBuilding.level)) ? 'bg-gradient-to-r from-yellow-500 to-orange-600 text-black shadow-lg shadow-yellow-500/20' : 'bg-gray-700 text-gray-500 cursor-not-allowed'}`}>
+                             {selectedBuilding.level >= 100 ? (<span>Max Level Reached</span>) : (<><ChevronUp size={18} strokeWidth={3} /><span>Upgrade for ${Math.floor(selectedBuilding.cost * Math.pow(1.5, selectedBuilding.level)).toLocaleString()}</span></>)}
+                          </button>
+                      </div>
+                  </div>
+              </div>
+          )}
+          
+          {!placementMode && !selectedBuilding && (
+            <div className="absolute right-5 bottom-28 z-50 flex flex-col items-center gap-1">
+               <button onClick={() => setActiveTab('upgrades')} className="bg-yellow-500 text-black p-4 rounded-full shadow-lg border-2 border-white/20 hover:bg-yellow-400 active:scale-95 transition-all">
+                 <HardHat size={28} strokeWidth={2.5} />
+               </button>
+               <span className="text-[10px] font-black uppercase text-white drop-shadow-md tracking-wider bg-black/50 px-2 py-0.5 rounded-full">Build</span>
+            </div>
+          )}
+
+          {!placementMode && !selectedBuilding && (
+            <div className="absolute left-5 bottom-28 z-50 flex flex-col items-center gap-1">
+               <button onClick={() => setActiveTab('business')} className="bg-blue-600 text-white p-4 rounded-full shadow-lg border-2 border-white/20 hover:bg-blue-500 active:scale-95 transition-all">
+                 <Briefcase size={28} strokeWidth={2.5} />
+               </button>
+               <span className="text-[10px] font-black uppercase text-white drop-shadow-md tracking-wider bg-black/50 px-2 py-0.5 rounded-full">Businesses</span>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* TOP HUD */}
+      <div className="absolute top-0 w-full px-4 py-4 pointer-events-none z-40">
+        <div className="flex justify-between items-start">
+          <div className="pointer-events-auto flex flex-col gap-2">
+             <div className="bg-black/60 backdrop-blur-md border border-green-500/50 rounded-xl px-4 py-2 flex items-center gap-3 shadow-lg w-fit">
+                <div className="w-8 h-8 rounded-full flex items-center justify-center overflow-hidden">
+                    <img src={processedBalanceIconUrl || BALANCE_ICON_URL} alt="$" className="w-full h-full object-contain" />
+                </div>
+                <div><p className="text-[10px] text-gray-300 uppercase">Balance</p><p className="text-xl font-bold font-mono leading-none">{Math.floor(balance).toLocaleString()}</p></div>
+             </div>
+             <div className="bg-black/60 backdrop-blur-md rounded-full px-3 py-1 w-fit flex items-center gap-2">
+               <Coins size={12} className="text-green-400"/><span className="text-xs font-bold text-green-400">+{profitPerHour.toLocaleString()}/hr</span>
+             </div>
+          </div>
+          <button onClick={() => setIsChatOpen(true)} className="pointer-events-auto bg-indigo-600/80 backdrop-blur-md p-2 rounded-full shadow-lg border border-indigo-400/50"><MessageCircle size={24} className="text-white" /></button>
+        </div>
+      </div>
+
+      {activeTab !== 'city' && (
+        <div className={`flex-1 z-30 overflow-y-auto pb-24 pt-20 px-4 animate-in slide-in-from-bottom duration-200 ${activeTab === 'character' ? 'bg-transparent backdrop-blur-none' : 'bg-gray-900/95 backdrop-blur-xl'}`}>
+           {activeTab === 'mine' && (
+             <div className="flex flex-col items-center justify-center min-h-full py-6 relative">
+                 {/* RIGHT SIDE TOOLS (Character & Booster) */}
+                <div className="absolute bottom-4 right-4 flex flex-col gap-4 z-20">
+                    <button 
+                        onClick={() => setActiveTab('character')}
+                        className="flex flex-col items-center gap-1 group">
+                        <div className="w-10 h-10 rounded-full bg-gray-800 border border-purple-500/50 flex items-center justify-center shadow-lg group-hover:scale-105 transition-transform active:scale-95">
+                            <User size={20} className="text-purple-400" />
+                        </div>
+                        <span className="text-[10px] font-bold text-purple-300 uppercase tracking-wide">Character</span>
+                    </button>
+
+                    <button 
+                        onClick={() => setActiveTab('booster')}
+                        className="flex flex-col items-center gap-1 group">
+                        <div className="w-10 h-10 rounded-full bg-gray-800 border border-blue-500/50 flex items-center justify-center shadow-lg group-hover:scale-105 transition-transform active:scale-95">
+                            <Rocket size={20} className="text-blue-400" />
+                        </div>
+                        <span className="text-[10px] font-bold text-blue-300 uppercase tracking-wide">Booster</span>
+                    </button>
+                </div>
+
+                {/* LEFT BOTTOM TOOLS (Task & Daily) */}
+                <div className="absolute bottom-4 left-4 flex flex-col gap-4 z-20">
+                     <button 
+                        onClick={() => setActiveTab('daily_login')}
+                        className="flex flex-col items-center gap-1 group relative">
+                         {/* Notification Dot */}
+                        {!dailyLogin.claimedToday && (
+                            <div className="absolute top-0 right-0 w-3 h-3 bg-red-500 rounded-full border border-black animate-ping"></div>
+                        )}
+                        {!dailyLogin.claimedToday && (
+                            <div className="absolute top-0 right-0 w-3 h-3 bg-red-500 rounded-full border border-black"></div>
+                        )}
+                        <div className="w-10 h-10 rounded-full bg-gray-800 border border-green-500/50 flex items-center justify-center shadow-lg group-hover:scale-105 transition-transform active:scale-95">
+                            <Calendar size={20} className="text-green-400" />
+                        </div>
+                        <span className="text-[10px] font-bold text-green-300 uppercase tracking-wide">Daily</span>
+                    </button>
+
+                    <button 
+                        onClick={() => setActiveTab('task')}
+                        className="flex flex-col items-center gap-1 group">
+                        <div className="w-10 h-10 rounded-full bg-gray-800 border border-pink-500/50 flex items-center justify-center shadow-lg group-hover:scale-105 transition-transform active:scale-95">
+                            <ClipboardList size={20} className="text-pink-400" />
+                        </div>
+                        <span className="text-[10px] font-bold text-pink-300 uppercase tracking-wide">Task</span>
+                    </button>
+                </div>
+
+                <div className="w-full px-8 mb-6 max-w-md">
+                   <div className="flex justify-between text-[10px] text-gray-400 mb-1">
+                       <span>Energy</span>
+                       <span>{Math.floor(energy)} / {5000 + (boosters.energyLimit.level * 500)}</span>
+                   </div>
+                   <div className="w-full h-2 bg-gray-700 rounded-full overflow-hidden">
+                     <div className="h-full bg-gradient-to-r from-blue-400 to-purple-500 transition-all duration-300" style={{ width: `${(energy / (5000 + (boosters.energyLimit.level * 500))) * 100}%` }} />
+                   </div>
+                </div>
+                <div className="relative">
+                  <div className="absolute inset-0 bg-yellow-500/20 blur-[40px] rounded-full"></div>
+                  <button onPointerDown={handleTap} className="touch-none relative w-56 h-56 sm:w-64 sm:h-64 active:scale-95 transition-all duration-100 flex flex-col items-center justify-center group z-10">
+                    <img src={processedSkinUrls[currentSkin.id] || currentSkin.imageUrl} alt={currentSkin.name} className="w-full h-full object-contain hover:scale-105 transition-all duration-300 drop-shadow-[0_0_20px_rgba(234,179,8,0.6)]" />
+                  </button>
+                </div>
+                <p className="mt-10 text-gray-500 text-xs animate-pulse">Tap to mine coins</p>
+             </div>
+           )}
+
+           {activeTab === 'character' && (
+             <div className="flex flex-col h-full relative z-10">
+                {/* Header */}
+                <div className="bg-black/40 backdrop-blur-md rounded-xl p-4 border border-white/10 mb-6 text-center shadow-xl">
+                   <h2 className="text-xl font-bold text-white mb-1 flex items-center justify-center gap-2"><User size={24} className="text-purple-400"/> Character Skins</h2>
+                   <p className="text-xs text-gray-300">Equip your mascot to customize your city hall.</p>
+                </div>
+                
+                {/* Skins Grid */}
+                <div className="grid grid-cols-3 gap-3">
+                    {CHARACTER_SKINS.map((skin) => {
+                        const isEquipped = skin.id === equippedSkinId;
+                        const isUnlocked = unlockedSkins.includes(skin.id);
+                        const requiredPPH = skin.unlockPPH;
+
+                        return (
+                            <button 
+                                key={skin.id} 
+                                onClick={() => isUnlocked && handleEquipSkin(skin.id)}
+                                disabled={!isUnlocked && skin.imageUrl} // Only disable if it's a locked real skin
+                                className={`aspect-square rounded-xl border-2 p-2 relative overflow-hidden transition-all hover:scale-[1.02] active:scale-[0.98] ${
+                                    isEquipped 
+                                        ? 'border-yellow-500 shadow-lg shadow-yellow-500/30 bg-black/40' 
+                                        : isUnlocked 
+                                            ? 'border-white/5 bg-gray-800/60 hover:border-purple-500/50' 
+                                            : 'border-dashed border-white/20 bg-black/20'
+                                } ${!isUnlocked && skin.imageUrl ? 'cursor-not-allowed' : ''}`}>
+                                 {skin.imageUrl ? (
+                                    <img 
+                                        src={processedSkinUrls[skin.id] || skin.imageUrl} 
+                                        alt={skin.name} 
+                                        className="w-full h-full object-contain drop-shadow-md"
+                                    />
+                                 ) : (
+                                    <div className="w-full h-full flex items-center justify-center bg-gray-900/50 rounded-lg">
+                                        <span className="text-[10px] font-black text-gray-600 text-center leading-3">COMING<br/>SOON</span>
+                                    </div>
+                                 )}
+
+                                 {isEquipped && (
+                                     <div className="absolute top-1 right-1 bg-yellow-500 text-black text-[8px] font-bold px-1.5 py-0.5 rounded-full">EQUIPPED</div>
+                                 )}
+                                 <div className="absolute bottom-1 left-0 w-full text-center">
+                                     <span className={`text-[9px] font-bold uppercase tracking-widest px-1 rounded ${
+                                        isEquipped ? 'text-yellow-400 bg-black/60' : 'text-white/60 bg-gray-800/80'
+                                     }`}>{skin.name}</span>
+                                 </div>
+                                 
+                                 {/* Only show lock overlay if it is locked AND has an image (exists) */}
+                                 {!isUnlocked && skin.imageUrl && (
+                                     <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/60">
+                                         <Lock size={20} className="text-red-500 mb-1"/>
+                                         <span className="text-[10px] font-bold text-red-400 uppercase">LOCKED</span>
+                                         <span className="text-[10px] text-gray-300 mt-1">Req: {skin.unlockPPH.toLocaleString()}/hr</span>
+                                     </div>
+                                 )}
+                            </button>
+                        );
+                    })}
+                </div>
+             </div>
+           )}
+
+           {activeTab === 'task' && (
+             <div className="space-y-6">
+                {/* Header */}
+                <div className="bg-gradient-to-r from-pink-900/80 to-red-900/80 backdrop-blur-md rounded-xl p-4 border border-pink-500/30 text-center shadow-xl relative">
+                   <button onClick={() => setActiveTab('mine')} className="absolute left-4 top-1/2 -translate-y-1/2 p-2 hover:bg-white/10 rounded-full transition-colors"><ChevronLeft size={20} /></button>
+                   <h2 className="text-xl font-bold text-white mb-1 flex items-center justify-center gap-2"><ClipboardList size={24} className="text-pink-400"/> Tasks</h2>
+                   <p className="text-xs text-gray-300">Complete quests to earn rewards.</p>
+                </div>
+
+                <div className="bg-black/40 backdrop-blur-md rounded-xl p-6 border border-white/10 text-center flex flex-col items-center gap-3">
+                    <div className="w-24 h-24 rounded-full bg-yellow-500/5 flex items-center justify-center animate-pulse overflow-hidden border-2 border-yellow-500/50 shadow-[0_0_25px_rgba(234,179,8,0.3)]">
+                         <img src={processedBalanceIconUrl || BALANCE_ICON_URL} alt="$HHC" className="w-full h-full object-cover" />
+                    </div>
+                    <h2 className="text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-orange-500 uppercase tracking-wider">
+                        EARLY ACCESS FOR $HHC COIN
+                    </h2>
+                    <p className="text-xs text-gray-400 max-w-xs">
+                        Join the whitelist and complete tasks to secure your allocation before the public listing.
+                    </p>
+                </div>
+
+                {/* TASKS LIST */}
+                <div className="space-y-3">
+                    <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider ml-2">Qualification Tasks</h3>
+                    {TASKS_DATA.map((task) => {
+                        const status = taskStatus[task.id]; 
+                        // Statuses: undefined -> 'pending_verify' -> 'verifying' -> 'claim_ready' -> 'completed'
+                        
+                        const isCompleted = status === 'completed';
+                        const isReadyToClaim = status === 'claim_ready';
+                        const isVerifying = status === 'verifying';
+                        const isPendingVerify = status === 'pending_verify';
+
+                        return (
+                            <div key={task.id} className={`bg-gray-800/60 border ${isCompleted ? 'border-green-500/30 bg-green-900/10' : 'border-white/5'} rounded-xl p-3 flex items-center justify-between transition-all`}>
+                                <div className="flex items-center gap-3">
+                                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${isCompleted ? 'bg-green-500/20' : 'bg-gray-700/50'}`}>
+                                        {isCompleted ? <CheckCircle size={24} className="text-green-400" /> : <IconPlaceholder name={task.id.includes('follow') ? 'Twitter' : 'Heart'} size={20} className={task.id.includes('follow') ? "text-blue-400" : "text-red-400"} />}
+                                    </div>
+                                    <div className="text-left">
+                                        <h3 className={`font-bold text-sm ${isCompleted ? 'text-green-400' : 'text-white'}`}>{task.title}</h3>
+                                        <p className="text-[10px] text-gray-400">{isCompleted ? "Completed" : `+${task.reward.toLocaleString()} Coins`}</p>
+                                    </div>
+                                </div>
+                                
+                                {isCompleted ? (
+                                    <div className="bg-green-500/20 p-2 rounded-full"><Check size={16} className="text-green-400"/></div>
+                                ) : isReadyToClaim ? (
+                                    <button 
+                                        onClick={() => handleClaimTask(task.id, task.reward)}
+                                        className="bg-green-600 hover:bg-green-500 text-white px-4 py-2 rounded-lg text-xs font-bold animate-pulse shadow-lg shadow-green-500/20">
+                                        Claim
+                                    </button>
+                                ) : isVerifying ? (
+                                     <button disabled className="bg-gray-700 text-gray-400 px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-2 cursor-wait">
+                                        <Loader size={12} className="animate-spin" /> Verifying...
+                                     </button>
+                                ) : isPendingVerify ? (
+                                    <button 
+                                        onClick={() => handleVerifyTask(task.id)}
+                                        className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-1 shadow-lg shadow-blue-500/20">
+                                        Check
+                                    </button>
+                                ) : (
+                                    <button 
+                                        onClick={() => handleTaskAction(task.id, task.link)}
+                                        className="bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-1">
+                                        Go <ExternalLink size={12} />
+                                    </button>
+                                )}
+                            </div>
+                        );
+                    })}
+                </div>
+             </div>
+           )}
+
+           {activeTab === 'daily_login' && (
+             <div className="space-y-6 h-full flex flex-col">
+                {/* Header */}
+                <div className="bg-gradient-to-r from-green-900/80 to-emerald-900/80 backdrop-blur-md rounded-xl p-4 border border-green-500/30 text-center shadow-xl relative shrink-0">
+                   <button onClick={() => setActiveTab('mine')} className="absolute left-4 top-1/2 -translate-y-1/2 p-2 hover:bg-white/10 rounded-full transition-colors"><ChevronLeft size={20} /></button>
+                   <h2 className="text-xl font-bold text-white mb-1 flex items-center justify-center gap-2"><Calendar size={24} className="text-green-400"/> Daily Rewards</h2>
+                   <p className="text-xs text-gray-300">Come back every day to earn more!</p>
+                </div>
+
+                {/* Grid */}
+                <div className="grid grid-cols-3 sm:grid-cols-4 gap-3 overflow-y-auto p-2 pb-24">
+                    {DAILY_REWARDS.map((reward, index) => {
+                        const dayNum = index + 1;
+                        const isToday = dayNum === dailyLogin.streak;
+                        const isPast = dayNum < dailyLogin.streak;
+                        
+                        // Current reward is claimable if it's today AND not yet claimed
+                        const isClaimable = isToday && !dailyLogin.claimedToday;
+                        
+                        // If it's today but already claimed, show as completed for UI
+                        const showAsCompleted = isPast || (isToday && dailyLogin.claimedToday);
+
+                        return (
+                            <div key={index} className={`relative flex flex-col items-center justify-center p-3 rounded-xl border-2 transition-all ${
+                                showAsCompleted 
+                                    ? 'bg-green-900/20 border-green-500/50 opacity-60' 
+                                    : isClaimable 
+                                        ? 'bg-green-600/20 border-green-400 scale-105 shadow-[0_0_15px_rgba(74,222,128,0.3)] animate-pulse' 
+                                        : 'bg-gray-800/40 border-white/5 opacity-50'
+                            }`}>
+                                <span className="text-[10px] text-gray-400 uppercase font-bold mb-1">Day {dayNum}</span>
+                                <div className="w-10 h-10 rounded-full bg-yellow-500/10 flex items-center justify-center mb-1">
+                                    <Coins size={20} className={showAsCompleted || isClaimable ? "text-yellow-400" : "text-gray-500"} />
+                                </div>
+                                <span className="text-xs font-bold text-white">{reward >= 1000000 ? `${reward/1000000}M` : reward >= 1000 ? `${reward/1000}K` : reward}</span>
+                                
+                                {showAsCompleted && (
+                                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center rounded-xl">
+                                        <CheckCircle className="text-green-400" size={24} />
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    })}
+                </div>
+                
+                <div className="mt-auto pb-4 px-4 shrink-0">
+                    <button 
+                        onClick={handleClaimDaily}
+                        disabled={dailyLogin.claimedToday}
+                        className={`w-full py-4 rounded-xl font-bold text-lg flex items-center justify-center gap-2 shadow-xl transition-all active:scale-95 ${
+                            dailyLogin.claimedToday 
+                                ? 'bg-gray-700 text-gray-400 cursor-not-allowed' 
+                                : 'bg-gradient-to-r from-green-500 to-emerald-600 text-white hover:from-green-400 hover:to-emerald-500'
+                        }`}>
+                        {dailyLogin.claimedToday ? (
+                            <>
+                                <Clock size={20} />
+                                <span>Come back tomorrow</span>
+                            </>
+                        ) : (
+                            <>
+                                <Coins size={20} />
+                                <span>Claim Day {dailyLogin.streak}</span>
+                            </>
+                        )}
+                    </button>
+                </div>
+             </div>
+           )}
+
+           {activeTab === 'booster' && (
+             <div className="space-y-6">
+                {/* Header */}
+                <div className="bg-gradient-to-r from-blue-900/80 to-purple-900/80 backdrop-blur-md rounded-xl p-4 border border-blue-500/30 text-center shadow-xl relative">
+                   <button onClick={() => setActiveTab('mine')} className="absolute left-4 top-1/2 -translate-y-1/2 p-2 hover:bg-white/10 rounded-full transition-colors"><ChevronLeft size={20} /></button>
+                   <h2 className="text-xl font-bold text-white mb-1 flex items-center justify-center gap-2"><Rocket size={24} className="text-blue-400"/> Boosters</h2>
+                   <p className="text-xs text-gray-300">Upgrade your abilities to earn faster.</p>
+                </div>
+
+                {/* Free Daily Boosters */}
+                <div className="space-y-3">
+                    <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider ml-2">Free Daily Boosters</h3>
+                    <button 
+                        onClick={useFullEnergy}
+                        disabled={boosters.dailyFullEnergy.current === 0}
+                        className={`w-full bg-gray-800/60 border border-white/5 rounded-xl p-3 flex items-center justify-between transition-all active:scale-95 ${boosters.dailyFullEnergy.current === 0 ? 'opacity-50 grayscale' : 'hover:bg-gray-700/60'}`}>
+                        <div className="flex items-center gap-3">
+                            <div className="w-12 h-12 bg-yellow-500/20 rounded-xl flex items-center justify-center">
+                                <ZapPlaceholder size={24} className="text-yellow-400" />
+                            </div>
+                            <div className="text-left">
+                                <h3 className="font-bold text-sm text-white">Full Tank</h3>
+                                <p className="text-[10px] text-gray-400">Restores energy to max</p>
+                            </div>
+                        </div>
+                        <div className="text-right">
+                            <span className="text-xs font-bold text-white">{boosters.dailyFullEnergy.current}/{boosters.dailyFullEnergy.max}</span>
+                        </div>
+                    </button>
+                </div>
+
+                {/* Paid Boosters */}
+                <div className="space-y-3">
+                    <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider ml-2">Boosters</h3>
+                    
+                    {/* Multitap */}
+                    <div className="bg-gray-800/60 border border-white/5 rounded-xl p-3 flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <div className="w-12 h-12 bg-green-500/20 rounded-xl flex items-center justify-center">
+                                <Hand size={24} className="text-green-400" />
+                            </div>
+                            <div className="text-left">
+                                <h3 className="font-bold text-sm text-white">Income per Tap</h3>
+                                <p className="text-[10px] text-gray-400">Lvl {boosters.multitap.level} • +1 coin/tap</p>
+                            </div>
+                        </div>
+                        <button 
+                            onClick={() => upgradeBooster('multitap')}
+                            disabled={balance < Math.floor(boosters.multitap.baseCost * Math.pow(2, boosters.multitap.level - 1))}
+                            className="bg-blue-600 hover:bg-blue-500 disabled:bg-gray-700 disabled:text-gray-500 text-white px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-1 min-w-[80px] justify-center transition-all active:scale-95">
+                            <Coins size={12} />
+                            {Math.floor(boosters.multitap.baseCost * Math.pow(2, boosters.multitap.level - 1)).toLocaleString()}
+                        </button>
+                    </div>
+
+                    {/* Energy Limit */}
+                    <div className="bg-gray-800/60 border border-white/5 rounded-xl p-3 flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <div className="w-12 h-12 bg-purple-500/20 rounded-xl flex items-center justify-center">
+                                <Battery size={24} className="text-purple-400" />
+                            </div>
+                            <div className="text-left">
+                                <h3 className="font-bold text-sm text-white">Energy Limit</h3>
+                                <p className="text-[10px] text-gray-400">Lvl {boosters.energyLimit.level} • +500 energy</p>
+                            </div>
+                        </div>
+                        <button 
+                            onClick={() => upgradeBooster('energyLimit')}
+                            disabled={balance < Math.floor(boosters.energyLimit.baseCost * Math.pow(2, boosters.energyLimit.level - 1))}
+                            className="bg-blue-600 hover:bg-blue-500 disabled:bg-gray-700 disabled:text-gray-500 text-white px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-1 min-w-[80px] justify-center transition-all active:scale-95">
+                            <Coins size={12} />
+                            {Math.floor(boosters.energyLimit.baseCost * Math.pow(2, boosters.energyLimit.level - 1)).toLocaleString()}
+                        </button>
+                    </div>
+
+                    {/* Recharging Speed */}
+                    <div className="bg-gray-800/60 border border-white/5 rounded-xl p-3 flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <div className="w-12 h-12 bg-orange-500/20 rounded-xl flex items-center justify-center">
+                                <ZapPlaceholder size={24} className="text-orange-400" />
+                            </div>
+                            <div className="text-left">
+                                <h3 className="font-bold text-sm text-white">Recharging Speed</h3>
+                                <p className="text-[10px] text-gray-400">Lvl {boosters.rechargingSpeed.level} • +1/sec</p>
+                            </div>
+                        </div>
+                        <button 
+                            onClick={() => upgradeBooster('rechargingSpeed')}
+                            disabled={balance < Math.floor(boosters.rechargingSpeed.baseCost * Math.pow(2, boosters.rechargingSpeed.level - 1))}
+                            className="bg-blue-600 hover:bg-blue-500 disabled:bg-gray-700 disabled:text-gray-500 text-white px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-1 min-w-[80px] justify-center transition-all active:scale-95">
+                            <Coins size={12} />
+                            {Math.floor(boosters.rechargingSpeed.baseCost * Math.pow(2, boosters.rechargingSpeed.level - 1)).toLocaleString()}
+                        </button>
+                    </div>
+                </div>
+             </div>
+           )}
+
+           {activeTab === 'business' && (
+             <div className="space-y-4">
+                <div className="bg-gradient-to-r from-blue-900 to-indigo-900 rounded-xl p-4 border border-blue-500/30">
+                   <h2 className="text-xl font-bold text-white mb-1 flex items-center gap-2"><Briefcase size={20}/> Real World Assets</h2>
+                   <p className="text-xs text-gray-300">Invest in passive businesses. Does not require map space.</p>
+                </div>
+                
+                <div className="space-y-3">
+                    {businesses.map((b) => {
+                        const nextLevel = b.level + 1;
+                        const currentCost = Math.floor(b.baseCost * Math.pow(1.5, b.level));
+                        // Income formula: Base * 1.2^(level-1). If level 0, next level income is Base.
+                        const currentIncome = b.level === 0 ? 0 : Math.floor(b.baseIncome * Math.pow(1.2, b.level - 1));
+                        const nextIncome = Math.floor(b.baseIncome * Math.pow(1.2, nextLevel - 1));
+                        const incomeGain = nextIncome - currentIncome;
+
+                        return (
+                            <div key={b.id} className="bg-gray-800/60 border border-white/5 rounded-xl p-3 flex flex-col gap-3">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-12 h-12 bg-gray-700/50 rounded-xl flex items-center justify-center">
+                                            {b.icon}
+                                        </div>
+                                        <div>
+                                            <h3 className="font-bold text-sm text-white">{b.name}</h3>
+                                            <p className="text-[10px] text-gray-400">{b.description}</p>
+                                        </div>
+                                    </div>
+                                    <div className="text-right">
+                                        <p className="text-xs font-bold text-blue-300">Lvl {b.level}</p>
+                                        <p className="text-[10px] text-green-400 font-bold">+{currentIncome.toLocaleString()}/hr</p>
+                                    </div>
+                                </div>
+                                
+                                <button 
+                                    disabled={b.level >= 100 || balance < currentCost}
+                                    onClick={() => upgradeBusiness(b.id)}
+                                    className={`w-full py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-2 ${
+                                        b.level >= 100 ? 'bg-gray-700 text-gray-500' :
+                                        balance >= currentCost ? 'bg-blue-600 hover:bg-blue-500 text-white' : 'bg-gray-700 text-gray-500'
+                                    }`}
+                                >
+                                    {b.level >= 100 ? "Max Level" : (
+                                        <>
+                                            {b.level === 0 ? "Unlock" : "Upgrade"} 
+                                            <span className="opacity-80 mx-1">|</span> 
+                                            <Coins size={10} /> {currentCost.toLocaleString()}
+                                            <span className="ml-auto text-green-200">+{incomeGain.toLocaleString()}/hr</span>
+                                        </>
+                                    )}
+                                </button>
+                            </div>
+                        );
+                    })}
+                </div>
+             </div>
+           )}
+
+           {activeTab === 'upgrades' && (
+             <div className="space-y-4">
+               <div className="bg-gradient-to-r from-indigo-900 to-purple-900 rounded-xl p-4 border border-indigo-500/30">
+                  <h2 className="text-sm font-bold text-white mb-2 flex items-center gap-2"><DraftingCompass size={16}/> AI Architect</h2>
+                  <div className="flex gap-2">
+                    <input value={customBuildName} onChange={e=>setCustomBuildName(e.target.value)} placeholder="E.g. Moon Base..." className="flex-1 bg-black/40 border border-indigo-500/30 rounded-lg px-3 py-2 text-xs text-white" />
+                    <button onClick={generateBuilding} disabled={isBuildingGen} className="bg-indigo-600 px-3 py-2 rounded-lg font-bold text-xs">{isBuildingGen?<Loader className="animate-spin" size={14}/>:"Design"}</button>
+                  </div>
+               </div>
+               <div className="space-y-3">
+                 <h2 className="text-sm font-bold text-white flex items-center gap-2"><HardHat className="text-yellow-500" size={16}/> Construction Catalog</h2>
+                 {availableBuildings.map(b => {
+                   const isOwned = placedBuildings.some(pb => pb.id === b.id);
+                   return (
+                   <div key={b.id} className="bg-gray-800/60 border border-white/5 rounded-xl p-3 flex items-center justify-between">
+                     <div className="flex items-center gap-3">
+                       <div className="w-12 h-12 bg-gray-700/30 rounded-lg flex items-center justify-center overflow-hidden shrink-0">
+                         {b.imageUrl ? (
+                           <img src={b.imageUrl} alt={b.name} className="w-full h-full object-cover" />
+                         ) : (
+                           b.icon || getIconForType(b.type)
+                         )}
+                       </div>
+                       <div><h3 className="font-bold text-sm">{b.name}</h3><p className="text-[10px] text-green-400">+{b.income}/hr</p></div>
+                     </div>
+                     <button 
+                        onClick={() => initPlacement(b)} 
+                        disabled={balance < b.cost || isOwned} 
+                        className={`px-4 py-2 rounded-lg font-bold text-xs flex items-center gap-1 ${
+                            isOwned ? 'bg-gray-600 text-gray-300' 
+                            : balance >= b.cost ? 'bg-yellow-500 text-black active:scale-95' : 'bg-gray-700 text-gray-500'
+                        }`}
+                     >
+                       {isOwned ? <Check size={12}/> : (balance >= b.cost ? <MousePointer2 size={12}/> : null)}
+                       <span>{isOwned ? "Owned" : `$${b.cost.toLocaleString()}`}</span>
+                     </button>
+                   </div>
+                 )})}
+               </div>
+             </div>
+           )}
+
+           {activeTab === 'ai-hub' && (
+             <div className="space-y-4">
+                {/* AI Status Card */}
+                <div className="bg-gray-800/80 p-4 rounded-xl border border-purple-500/30">
+                   <div className="flex gap-3 mb-3">
+                       <BotPlaceholder className="text-purple-400" size={24} />
+                       <p className="text-sm italic text-gray-300">"{isAiLoading ? "Processing..." : aiOutput}"</p>
+                   </div>
+                   <div className="flex flex-col gap-2">
+                       <h3 className="text-xs font-semibold text-purple-300">Text & Insight Tools</h3>
+                       <div className="grid grid-cols-3 gap-2">
+                          <button onClick={()=>callGeminiAI('advice')} disabled={isAiLoading} className="flex-1 bg-purple-600/30 py-2 rounded text-xs font-bold hover:bg-purple-600 transition-colors">Advice</button>
+                          <button onClick={()=>callGeminiAI('news')} disabled={isAiLoading} className="flex-1 bg-emerald-600/30 py-2 rounded text-xs font-bold hover:bg-emerald-600 transition-colors">News</button>
+                          <button onClick={callGeminiMarketWatch} disabled={isAiLoading} className="flex-1 bg-yellow-600/30 py-2 rounded text-xs font-bold hover:bg-yellow-600 transition-colors flex items-center justify-center gap-1">
+                            {isAiLoading ? <Loader className="animate-spin" size={12}/> : '✨ Market Watch'}
+                          </button>
+                       </div>
+                   </div>
+                </div>
+
+                {/* NEW: CRISIS SIMULATOR */}
+                <div className="bg-gray-800/80 p-4 rounded-xl border border-red-500/30">
+                    <h2 className="text-lg font-bold text-white mb-3 flex items-center gap-2">
+                        <AlertTriangle size={20} className="text-red-400"/> ✨ Crisis Simulator
+                    </h2>
+                    
+                    {currentCrisis ? (
+                        /* CRISIS ACTIVE VIEW */
+                        <div className="space-y-4">
+                            <div className="p-3 bg-red-900/40 rounded-lg border border-red-500/50">
+                                <h3 className="text-lg font-bold text-red-300 mb-1">{currentCrisis.crisis_title}</h3>
+                                <p className="text-sm text-gray-200">{currentCrisis.crisis_report}</p>
+                            </div>
+                            <h4 className="text-sm font-semibold text-gray-400">Decide Your Strategy:</h4>
+                            <div className="space-y-2">
+                                {currentCrisis.options.map((option, index) => (
+                                    <button 
+                                        key={index}
+                                        onClick={() => handleCrisisDecision(option)}
+                                        className="w-full text-left p-3 rounded-xl bg-gray-700/50 hover:bg-gray-600/80 transition-colors border border-white/10"
+                                    >
+                                        <p className="font-bold text-white text-sm">{option.action_name}</p>
+                                        <p className="text-xs text-red-300 font-mono my-1">{option.action_impact}</p>
+                                        <p className="text-[10px] text-gray-400">
+                                            {option.justification}
+                                        </p>
+                                        <div className="flex justify-between mt-1 text-[10px] font-mono font-bold">
+                                            <span className={option.effect_on_balance > 0 ? 'text-green-400' : 'text-red-400'}>
+                                                Coins: {option.effect_on_balance.toLocaleString()}
+                                            </span>
+                                            <span className={option.effect_on_pph > 0 ? 'text-green-400' : 'text-red-400'}>
+                                                PPH: {option.effect_on_pph.toLocaleString()}
+                                            </span>
+                                        </div>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    ) : (
+                        /* CRISIS INACTIVE VIEW */
+                        <div className="text-center space-y-3">
+                            <p className="text-xs text-gray-400">
+                                Generate a sudden economic crisis based on your current city assets and decide how to navigate the fallout.
+                            </p>
+                            <button 
+                                onClick={callGeminiCrisis}
+                                disabled={isAiLoading}
+                                className="w-full py-3 rounded-lg font-bold text-sm transition-all active:scale-95 bg-red-600 hover:bg-red-500 disabled:bg-red-800/50 text-white flex items-center justify-center gap-2"
+                            >
+                                {isAiLoading ? <Loader className="animate-spin" size={16}/> : 'Simulate Crisis'}
+                            </button>
+                        </div>
+                    )}
+                </div>
+             </div>
+           )}
+        </div>
+      )}
+
+      {isChatOpen && (
+        <div className="fixed inset-0 z-[60] bg-black/80 flex items-center justify-center p-4">
+          <div className="bg-gray-900 w-full max-w-sm rounded-2xl h-[500px] flex flex-col overflow-hidden border border-gray-700 shadow-2xl">
+            <div className="bg-gray-800 p-3 flex justify-between items-center"><span className="font-bold flex items-center gap-2"><div className="w-6 h-6 rounded-full bg-cover" style={{backgroundImage:`url(${LOADING_BG_IMAGE})`}}></div> Cat CEO</span><button onClick={() => setIsChatOpen(false)}><X size={20}/></button></div>
+            <div className="flex-1 overflow-y-auto p-3 space-y-2 bg-black/20">
+              {chatMessages.map((m,i) => <div key={i} className={`p-2 rounded-lg text-sm max-w-[80%] ${m.sender==='user'?'ml-auto bg-indigo-600':'bg-gray-700'}`}>{m.text}</div>)}
+              <div ref={chatEndRef} />
+            </div>
+            <div className="p-2 bg-gray-800 flex gap-2">
+               <input value={userMessage} onChange={e=>setUserMessage(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') sendChatMessage(); }} className="flex-1 bg-black/50 rounded-full px-4 text-sm border border-gray-600" placeholder="Type..." />
+               <button onClick={sendChatMessage} className="bg-indigo-600 p-2 rounded-full"><Send size={16} /></button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="bg-gray-900/95 backdrop-blur-md border-t border-white/5 px-6 py-3 pb-6 flex justify-between items-center z-50 fixed bottom-0 w-full shadow-2xl">
+         <NavButton active={activeTab === 'city'} onClick={() => { setActiveTab('city'); setPlacementMode(null); setSelectedBuilding(null); }} icon={<Building2 size={22} />} label="City" />
+         <NavButton active={activeTab === 'mine' || activeTab === 'character' || activeTab === 'booster'} onClick={() => setActiveTab('mine')} icon={<Server size={22} />} label="Mine" />
+         <NavButton active={activeTab === 'ai-hub'} onClick={() => setActiveTab('ai-hub')} icon={<SparklesPlaceholder size={22} />} label="AI Hub" />
+         
+         <button onClick={toggleMusic} className={`flex flex-col items-center space-y-1 transition-colors ${musicEnabled ? 'text-yellow-500' : 'text-gray-500 hover:text-gray-300'}`}>
+            <IconPlaceholder name="Volume2" size={22} className={musicEnabled ? 'text-yellow-500' : 'text-gray-500'}/>
+            <span className="text-[10px] font-bold uppercase tracking-wide">{musicEnabled ? 'Music On' : 'Music Off'}</span>
+         </button>
+
+         <button onClick={callGeminiTTS} disabled={isTtsLoading} className={`flex flex-col items-center space-y-1 transition-colors text-gray-500 hover:text-gray-300 ${isTtsLoading ? 'animate-pulse text-yellow-400' : ''}`}>
+            {isTtsLoading ? <Loader size={22} className="animate-spin" /> : <IconPlaceholder name="Radio" size={22} />}
+            <span className="text-[10px] font-bold uppercase tracking-wide">{isTtsLoading ? 'Speaking...' : '✨ Speak'}</span>
+         </button>
+      </div>
+    </div>
+  );
+}
+
+function NavButton({ active, onClick, icon, label }) {
+  return (
+    <button onClick={onClick} className={`flex flex-col items-center space-y-1 transition-colors ${active ? 'text-yellow-500' : 'text-gray-500 hover:text-gray-300'}`}>
+      {icon}
+      <span className="text-[10px] font-bold uppercase tracking-wide">{label}</span>
+    </button>
+  );
+}
+// Required icon component for the locked skin UI
+function Lock(props) {
+    return (
+        <svg xmlns="http://www.w3.org/2000/svg" width={props.size} height={props.size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+            <rect width="18" height="11" x="3" y="11" rx="2" ry="2"></rect>
+            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+        </svg>
+    );
+}
+    
+// --- MOUNT THE APP ---
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(<App />);
+
+    </script>
+</body>
+</html>
